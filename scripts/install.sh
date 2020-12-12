@@ -38,27 +38,17 @@ stacksize 262144
 flush
 auth strong
 
-users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
-
-$(awk -F "/" '{print "auth strong\n" \
-"allow " $1 "\n" \
-"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
-"flush\n"}' ${WORKDATA})
+users users thuongtin:CL:thuongtin
+auth strong
+allow thuongtin
+$(awk -F "/" '{print "proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n"}' ${WORKDATA})
+flush
 EOF
 }
 
-gen_proxy_file_for_user() {
-    cat >proxy.txt <<EOF
-$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
-EOF
-}
-
-upload_proxy() {
-    echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
-}
 gen_data() {
     seq $FIRST_PORT $LAST_PORT | while read port; do
-        echo "usr$(random)/pass$(random)/$IP4/$port/$(gen64 $IP6)"
+        echo "thuongtin/thuongtin/$IP4/$port/$(gen64 $IP6)"
     done
 }
 
@@ -75,6 +65,7 @@ EOF
 }
 echo "installing apps"
 yum -y install gcc net-tools bsdtar zip >/dev/null
+yum -y groupinstall 'Development Tools' >/dev/null
 
 install_3proxy
 
@@ -83,16 +74,13 @@ WORKDIR="/home/proxy-installer"
 WORKDATA="${WORKDIR}/data.txt"
 mkdir $WORKDIR && cd $_
 
-IP4=$(curl -4 -s icanhazip.com)
-IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
+IP4=$(curl -4 -s v4.ipv6-test.com/api/myip.php)
+IP6=$(curl -6 -s v6.ipv6-test.com/api/myip.php | cut -f1-4 -d':')
 
 echo "Internal ip = ${IP4}. Exteranl sub for ip6 = ${IP6}"
 
-echo "How many proxy do you want to create? Example 500"
-read COUNT
-
 FIRST_PORT=10000
-LAST_PORT=$(($FIRST_PORT + $COUNT))
+LAST_PORT=13000
 
 gen_data >$WORKDIR/data.txt
 gen_iptables >$WORKDIR/boot_iptables.sh
@@ -110,6 +98,4 @@ EOF
 
 bash /etc/rc.local
 
-gen_proxy_file_for_user
-
-upload_proxy
+echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
