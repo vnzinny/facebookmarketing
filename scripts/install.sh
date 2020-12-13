@@ -34,11 +34,11 @@ nscache6 65536
 timeouts 1 5 30 60 180 1800 15 60
 setgid 65535
 setuid 65535
-stacksize 262144
+stacksize 2621440
 flush
 auth strong
 
-users users thuongtin:CL:thuongtin
+users thuongtin:CL:thuongtin
 auth strong
 allow thuongtin
 $(awk -F "/" '{print "proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n"}' ${WORKDATA})
@@ -79,7 +79,7 @@ IP6=$(curl -6 -s v6.ipv6-test.com/api/myip.php | cut -f1-4 -d':')
 echo "Internal ip = ${IP4}. Exteranl sub for ip6 = ${IP6}"
 
 FIRST_PORT=10000
-LAST_PORT=13000
+LAST_PORT=13500
 
 gen_data >$WORKDIR/data.txt
 gen_iptables >$WORKDIR/boot_iptables.sh
