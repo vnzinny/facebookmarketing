@@ -65,7 +65,6 @@ EOF
 }
 echo "installing apps"
 yum -y install gcc net-tools bsdtar zip >/dev/null
-yum -y groupinstall 'Development Tools' >/dev/null
 
 install_3proxy
 
