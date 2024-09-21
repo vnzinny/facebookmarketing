@@ -6,14 +6,7 @@ random() {
 }                            
 # Hàm tạo file và ghi danh sách IPv6
 create_ipv6_file() {
-  # Tạo file nếu chưa tồn tại
-  fixed_ipv6_file="fixed_ipv6.txt"
-  if [ ! -f "$fixed_ipv6_file" ]; then
-    touch "$fixed_ipv6_file"
-    echo "File $fixed_ipv6_file đã được tạo."
-  fi
-
-  # Ghi danh sách IPv6 vào file
+# Ghi danh sách IPv6 vào file
   echo "Nhập các địa chỉ IPv6, mỗi địa chỉ trên một dòng. Nhập 'quit' để kết thúc."
   while IFS= read -r ipv6; do
     if [[ "$ipv6" == "quit" ]]; then
