@@ -1,26 +1,17 @@
 #!/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
 random() {
 	tr </dev/urandom -dc A-Za-z0-9 | head -c12
 	echo
 }
-# Hàm tạo file và ghi danh sách IPv6
-create_ipv6_file() {
-  # Tạo file nếu chưa tồn tại
-  fixed_ipv6_file="fixed_ipv6.txt"
-  if [ ! -f "$fixed_ipv6_file" ]; then
-    touch "$fixed_ipv6_file"
-    echo "File $fixed_ipv6_file đã được tạo."
-  fi
 
-  # Ghi danh sách IPv6 vào file
-  echo "Nhập các địa chỉ IPv6, mỗi địa chỉ trên một dòng. Nhập 'quit' để kết thúc."
-  while IFS= read -r ipv6; do
-    if [[ "$ipv6" == "quit" ]]; then
-      break
-    fi
-    echo "$ipv6" >> $fixed_ipv6_file
-  done
+array=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
+gen64() {
+	ip64() {
+		echo "${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}${array[$RANDOM % 16]}"
+	}
+	echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
 }
 install_3proxy() {
     echo "installing 3proxy"
@@ -70,12 +61,11 @@ $(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
 EOF
 }
 
+
 gen_data() {
-    while IFS= read -r ipv6; do
-        port=$((10000 + $LINENO))  # Giữ nguyên cách tính port như ban đầu
-        echo "user$port/$(random)/$IP4/$port/$ipv6"
-    done < "$fixed_ipv6.txt"
-    # Lưu ý dấu "<" ở cuối dòng để đọc dữ liệu từ file
+    seq $FIRST_PORT $LAST_PORT | while read port; do
+        echo "user$port/$(random)/$IP4/$port/$(gen64 $IP6)"
+    done
 }
 
 gen_iptables() {
@@ -106,8 +96,6 @@ echo "working folder = /home/cloudfly"
 WORKDIR="/home/cloudfly"
 WORKDATA="${WORKDIR}/data.txt"
 mkdir $WORKDIR && cd $_
-# Gọi hàm để thực hiện
-create_ipv6_file
 
 IP4=$(curl -4 -s icanhazip.com)
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
@@ -115,16 +103,16 @@ IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 echo "Internal ip = ${IP4}. Exteranl sub for ip6 = ${IP6}"
 
 while :; do
-  read -p "Enter FIRST_PORT between 10000 and 20000: " FIRST_PORT
+  read -p "Enter FIRST_PORT between 21000 and 61000: " FIRST_PORT
   [[ $FIRST_PORT =~ ^[0-9]+$ ]] || { echo "Enter a valid number"; continue; }
-  if ((FIRST_PORT >= 10000 && FIRST_PORT <= 20000)); then
+  if ((FIRST_PORT >= 21000 && FIRST_PORT <= 61000)); then
     echo "OK! Valid number"
     break
   else
     echo "Number out of range, try again"
   fi
 done
-LAST_PORT=$(($FIRST_PORT + 100))
+LAST_PORT=$(($FIRST_PORT + 750))
 echo "LAST_PORT is $LAST_PORT. Continue..."
 
 gen_data >$WORKDIR/data.txt
