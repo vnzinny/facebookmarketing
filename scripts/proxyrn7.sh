@@ -1,27 +1,11 @@
 #!/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-random() {
-        tr </dev/urandom -dc A-Za-z0-9 | head -c12
-        echo
-}                            
-# Hàm tạo file và ghi danh sách IPv6
-create_ipv6_file() {
-  # Tạo file nếu chưa tồn tại
-  fixed_ipv6_file="fixed_ipv6.txt"
-  if [ ! -f "$fixed_ipv6_file" ]; then
-    touch "$fixed_ipv6_file"
-    echo "File $fixed_ipv6_file đã được tạo."
-  fi
 
-  # Ghi danh sách IPv6 vào file
-  echo "Nhập các địa chỉ IPv6, mỗi địa chỉ trên một dòng. Nhập 'quit' để kết thúc."
-  while IFS= read -r ipv6; do
-    if [[ "$ipv6" == "quit" ]]; then
-      break
-    fi
-    echo "$ipv6" >> $fixed_ipv6_file
-  done
+random() {
+    tr </dev/urandom -dc A-Za-z0-9 | head -c12
+    echo
 }
+
 install_3proxy() {
     echo "installing 3proxy"
     URL="https://github.com/z3APA3A/3proxy/archive/3proxy-0.8.6.tar.gz"
@@ -30,15 +14,14 @@ install_3proxy() {
     make -f Makefile.Linux
     mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
     cp src/3proxy /usr/local/etc/3proxy/bin/
-    #cp ./scripts/rc.d/proxy.sh /etc/init.d/3proxy
-    #chmod +x /etc/init.d/3proxy
-    #chkconfig 3proxy on
     cd $WORKDIR
 }
+
 download_proxy() {
-cd /home/cloudfly
-curl -F "file=@proxy.txt" https://file.io
+    cd /home/cloudfly
+    curl -F "file=@proxy.txt" https://file.io
 }
+
 gen_3proxy() {
     cat <<EOF
 daemon
@@ -71,11 +54,14 @@ EOF
 }
 
 gen_data() {
+    userproxy=$(random)
+    passproxy=$(random)
+    
+    count=1
     while IFS= read -r ipv6; do
-        port=$((10000 + $LINENO))  # Giữ nguyên cách tính port như ban đầu
-        echo "user$port/$(random)/$IP4/$port/$ipv6"
-    done < "$fixed_ipv6.txt"
-    # Lưu ý dấu "<" ở cuối dòng để đọc dữ liệu từ file
+        echo "$userproxy/$passproxy/$IP4/$((FIRST_PORT + count - 1))/$ipv6"
+        count=$((count + 1))
+    done < $WORKDIR/ipv6_list.txt
 }
 
 gen_iptables() {
@@ -89,45 +75,50 @@ gen_ifconfig() {
 $(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
 EOF
 }
-echo "installing apps"
+
+echo "Installing apps"
 yum -y install wget gcc net-tools bsdtar zip >/dev/null
 
-cat << EOF > /etc/rc.d/rc.local
+cat <<EOF > /etc/rc.d/rc.local
 #!/bin/bash
 touch /var/lock/subsys/local
 EOF
 
-echo "installing apps"
+echo "Installing apps"
 yum -y install wget gcc net-tools bsdtar zip >/dev/null
 
 install_3proxy
 
-echo "working folder = /home/cloudfly"
+echo "Working folder = /home/cloudfly"
 WORKDIR="/home/cloudfly"
 WORKDATA="${WORKDIR}/data.txt"
 mkdir $WORKDIR && cd $_
 
 IP4=$(curl -4 -s icanhazip.com)
-IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
-echo "Internal ip = ${IP4}. Exteranl sub for ip6 = ${IP6}"
+# Nhập danh sách 100 IPv6
+echo "Please input 100 IPv6 addresses (one per line):"
+> $WORKDIR/ipv6_list.txt
+for i in $(seq 1 100); do
+    read -p "IPv6 address $i: " ipv6
+    echo $ipv6 >> $WORKDIR/ipv6_list.txt
+done
+
+echo "Internal IP = ${IP4}"
 
 while :; do
-  read -p "Enter FIRST_PORT between 10000 and 20000: " FIRST_PORT
-  [[ $FIRST_PORT =~ ^[0-9]+$ ]] || { echo "Enter a valid number"; continue; }
-  if ((FIRST_PORT >= 10000 && FIRST_PORT <= 20000)); then
-    echo "OK! Valid number"
-    break
-  else
-    echo "Number out of range, try again"
-  fi
+    read -p "Enter FIRST_PORT between 21000 and 61000: " FIRST_PORT
+    [[ $FIRST_PORT =~ ^[0-9]+$ ]] || { echo "Enter a valid number"; continue; }
+    if ((FIRST_PORT >= 21000 && FIRST_PORT <= 61000)); then
+        echo "OK! Valid number"
+        break
+    else
+        echo "Number out of range, try again"
+    fi
 done
-LAST_PORT=$(($FIRST_PORT + 100))
+LAST_PORT=$(($FIRST_PORT + 99))
 echo "LAST_PORT is $LAST_PORT. Continue..."
 
-#Gọi hàm để thực hiện
-cd $WORKDIR
-create_ipv6_file
 gen_data >$WORKDIR/data.txt
 gen_iptables >$WORKDIR/boot_iptables.sh
 gen_ifconfig >$WORKDIR/boot_ifconfig.sh
