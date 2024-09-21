@@ -2,7 +2,8 @@
 # Hàm để tạo file và ghi danh sách IPv6
 create_ipv6_file() {
   echo "Nhập các địa chỉ IPv6, mỗi địa chỉ trên một dòng. Nhập 'quit' để kết thúc."
-  > $fixed_ipv6_file  # Xóa nội dung cũ của file (nếu có)
+
+  > "$fixed_ipv6_file"  # Xóa nội dung cũ của file trước khi bắt đầu vòng lặp
 
   while IFS= read -r ipv6; do
     if [[ "$ipv6" == "quit" ]]; then
