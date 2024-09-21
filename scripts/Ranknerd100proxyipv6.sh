@@ -23,9 +23,6 @@ create_ipv6_file() {
   done
 }
 
-# Gọi hàm để thực hiện
-create_ipv6_file
-
 install_3proxy() {
     echo "installing 3proxy"
     mkdir -p /3proxy
@@ -123,6 +120,8 @@ echo "working folder = /home/proxy-installer"
 WORKDIR="/home/proxy-installer"
 WORKDATA="${WORKDIR}/data.txt"
 mkdir $WORKDIR && cd $_
+# Gọi hàm để thực hiện
+create_ipv6_file
 
 IP4=$(curl -4 -s icanhazip.com)
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
