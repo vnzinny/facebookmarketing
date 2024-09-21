@@ -1,10 +1,20 @@
 #!/bin/sh
-# Hàm để tạo file và ghi danh sách IPv6
+random() {
+	tr </dev/urandom -dc A-Za-z0-9 | head -c5
+	echo
+}
+
+# Hàm tạo file và ghi danh sách IPv6
 create_ipv6_file() {
+  # Tạo file nếu chưa tồn tại
+  fixed_ipv6_file="fixed_ipv6.txt"
+  if [ ! -f "$fixed_ipv6_file" ]; then
+    touch "$fixed_ipv6_file"
+    echo "File $fixed_ipv6_file đã được tạo."
+  fi
+
+  # Ghi danh sách IPv6 vào file
   echo "Nhập các địa chỉ IPv6, mỗi địa chỉ trên một dòng. Nhập 'quit' để kết thúc."
-
-  > "$fixed_ipv6_file"  # Xóa nội dung cũ của file trước khi bắt đầu vòng lặp
-
   while IFS= read -r ipv6; do
     if [[ "$ipv6" == "quit" ]]; then
       break
@@ -12,9 +22,9 @@ create_ipv6_file() {
     echo "$ipv6" >> $fixed_ipv6_file
   done
 }
-random() {
-	tr </dev/urandom -dc A-Za-z0-9 | head -c5
-	echo
+
+# Gọi hàm để thực hiện
+create_ipv6_file
 
 install_3proxy() {
     echo "installing 3proxy"
@@ -87,10 +97,10 @@ upload_proxy() {
 }
 gen_data() {
     while IFS= read -r ipv6; do
-        # Giả sử bạn muốn tạo cấu hình 3proxy với port bắt đầu từ 10000 và tăng dần
-        port=$((10000 + $LINENO))
+        port=$((10000 + $LINENO))  # Giữ nguyên cách tính port như ban đầu
         echo "$(random)/$(random)/$IP4/$port/$ipv6"
-    done < fixed_ipv6.txt
+    done < "$fixed_ipv6.txt"
+    # Lưu ý dấu "<" ở cuối dòng để đọc dữ liệu từ file
 }
 
 gen_iptables() {
@@ -105,7 +115,7 @@ $(awk -F "/" '{print "ifconfig enp1s0 inet6 add " $5 "/64"}' ${WORKDATA})
 EOF
 }
 echo "installing apps"
-yum -y install gcc net-tools bsdtar zip make >/dev/null
+yum -y install gcc net-tools bsdtar zip make wget nano >/dev/null
 
 install_3proxy
 
