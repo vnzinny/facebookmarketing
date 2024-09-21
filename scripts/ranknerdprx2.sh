@@ -9,12 +9,25 @@ install_3proxy() {
     echo "Cài đặt 3proxy..."
     URL="https://github.com/z3APA3A/3proxy/archive/refs/tags/0.9.4.tar.gz"
     wget -qO- $URL | tar -zxvf-
-    cd 3proxy-0.9.4
-    make -f Makefile.Linux
+    
+    # Vào thư mục source của 3proxy sau khi giải nén
+    cd 3proxy-0.9.4 || { echo "Thư mục 3proxy không tồn tại!"; exit 1; }
+    
+    # Biên dịch 3proxy
+    make -f Makefile.Linux || { echo "Lỗi khi biên dịch 3proxy!"; exit 1; }
+
+    # Tạo thư mục nếu chưa có
     mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
-    cp src/3proxy /usr/local/etc/3proxy/bin/3proxy
+
+    # Sao chép file 3proxy vào thư mục bin
+    cp src/3proxy /usr/local/etc/3proxy/bin/3proxy || { echo "Không thể sao chép file 3proxy!"; exit 1; }
+
+    # Trở về thư mục làm việc ban đầu
     cd ..
 }
+
+# Gọi hàm cài đặt 3proxy
+install_3proxy
 
 # Hàm tạo file cấu hình 3proxy
 gen_3proxy() {
@@ -66,25 +79,20 @@ gen_data() {
 
 # Cấu hình iptables để mở port
 gen_iptables() {
-    echo "Cấu hình iptables..."
-    while IFS= read -r line; do
-        PORT=$(echo $line | cut -d "/" -f 4)
-        iptables -I INPUT -p tcp --dport $PORT -j ACCEPT
-    done < ${WORKDIR}/data.txt
+    cat <<EOF
+#!/bin/bash
+echo "Cấu hình iptables..."
+$(awk -F "/" '{print "iptables -I INPUT -p tcp --dport " $4 " -j ACCEPT"}' ${WORKDIR}/data.txt)
+EOF
 }
 
 # Thêm IPv6 vào giao diện mạng
 gen_ifconfig() {
-    echo "Thêm địa chỉ IPv6 vào giao diện mạng..."
-    while IFS= read -r line; do
-        IPV6=$(echo $line | cut -d "/" -f 5)
-        if ! ip -6 addr show dev eth0 | grep -q "$IPV6"; then
-            echo "ip -6 addr add $IPV6/64 dev eth0"
-            ip -6 addr add $IPV6/64 dev eth0
-        else
-            echo "Địa chỉ IPv6 $IPV6 đã tồn tại, bỏ qua."
-        fi
-    done < ${WORKDIR}/data.txt
+    cat <<EOF
+#!/bin/bash
+echo "Thêm địa chỉ IPv6 vào giao diện mạng..."
+$(awk -F "/" '{print "ip -6 addr add " $5 "/64 dev eth0"}' ${WORKDIR}/data.txt)
+EOF
 }
 
 # Tạo file cấu hình 3proxy
