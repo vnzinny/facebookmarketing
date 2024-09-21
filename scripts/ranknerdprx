@@ -2,7 +2,7 @@
 
 # Cài đặt các gói cần thiết
 echo "Cài đặt các gói cần thiết..."
-yum -y install wget gcc net-tools bsdtar zip make >/dev/null
+yum -y install wget gcc net-tools bsdtar zip make nano >/dev/null
 
 # Cài đặt 3proxy
 install_3proxy() {
