@@ -5,7 +5,6 @@ random() {
 	tr </dev/urandom -dc A-Za-z0-9 | head -c12
 	echo
 }
-
 # Hàm tạo file và ghi danh sách IPv6
 create_ipv6_file() {
   # Tạo file nếu chưa tồn tại
@@ -72,11 +71,10 @@ $(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
 EOF
 }
 
-
 gen_data() {
     while IFS= read -r ipv6; do
         port=$((10000 + $LINENO))  # Giữ nguyên cách tính port như ban đầu
-        echo "$(random)/$(random)/$IP4/$port/$ipv6"
+        echo "user$port/$(random)/$IP4/$port/$ipv6"
     done < "$fixed_ipv6.txt"
     # Lưu ý dấu "<" ở cuối dòng để đọc dữ liệu từ file
 }
@@ -118,16 +116,16 @@ IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 echo "Internal ip = ${IP4}. Exteranl sub for ip6 = ${IP6}"
 
 while :; do
-  read -p "Enter FIRST_PORT between 21000 and 61000: " FIRST_PORT
+  read -p "Enter FIRST_PORT between 10000 and 20000: " FIRST_PORT
   [[ $FIRST_PORT =~ ^[0-9]+$ ]] || { echo "Enter a valid number"; continue; }
-  if ((FIRST_PORT >= 21000 && FIRST_PORT <= 61000)); then
+  if ((FIRST_PORT >= 10000 && FIRST_PORT <= 20000)); then
     echo "OK! Valid number"
     break
   else
     echo "Number out of range, try again"
   fi
 done
-LAST_PORT=$(($FIRST_PORT + 750))
+LAST_PORT=$(($FIRST_PORT + 100))
 echo "LAST_PORT is $LAST_PORT. Continue..."
 
 gen_data >$WORKDIR/data.txt
