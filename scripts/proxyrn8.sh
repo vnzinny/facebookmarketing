@@ -71,9 +71,14 @@ EOF
 }
 
 gen_ifconfig() {
-    cat <<EOF
-$(awk -F "/" '{print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
-EOF
+    while read -r line; do
+        ipv6=$(echo "$line" | awk -F "/" '{print $5}')
+        if ! ip -6 addr show dev eth0 | grep -q "$ipv6"; then
+            echo "ip -6 addr add $ipv6/64 dev eth0"
+        else
+            echo "IPv6 $ipv6 already exists, skipping..."
+        fi
+    done < ${WORKDATA}
 }
 
 echo "Installing apps"
