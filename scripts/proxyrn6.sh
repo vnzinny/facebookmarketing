@@ -6,7 +6,14 @@ random() {
 }                            
 # Hàm tạo file và ghi danh sách IPv6
 create_ipv6_file() {
-# Ghi danh sách IPv6 vào file
+  # Tạo file nếu chưa tồn tại
+  fixed_ipv6_file="fixed_ipv6.txt"
+  if [ ! -f "$fixed_ipv6_file" ]; then
+    touch "$fixed_ipv6_file"
+    echo "File $fixed_ipv6_file đã được tạo."
+  fi
+
+  # Ghi danh sách IPv6 vào file
   echo "Nhập các địa chỉ IPv6, mỗi địa chỉ trên một dòng. Nhập 'quit' để kết thúc."
   while IFS= read -r ipv6; do
     if [[ "$ipv6" == "quit" ]]; then
@@ -119,7 +126,8 @@ LAST_PORT=$(($FIRST_PORT + 100))
 echo "LAST_PORT is $LAST_PORT. Continue..."
 
 #Gọi hàm để thực hiện
-create_ipv6_file >$WORKDIR/fixed_ipv6.txt
+cd $WORKDIR
+create_ipv6_file
 gen_data >$WORKDIR/data.txt
 gen_iptables >$WORKDIR/boot_iptables.sh
 gen_ifconfig >$WORKDIR/boot_ifconfig.sh
