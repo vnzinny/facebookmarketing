@@ -10,7 +10,7 @@ install_3proxy() {
     URL="https://github.com/z3APA3A/3proxy/archive/refs/tags/0.9.4.tar.gz"
     wget -qO- $URL | tar -zxvf-
     
-    # Vào thư mục source của 3proxy sau khi giải nén
+    # Kiểm tra thư mục sau khi giải nén
     cd 3proxy-0.9.4 || { echo "Thư mục 3proxy không tồn tại!"; exit 1; }
     
     # Biên dịch 3proxy
@@ -18,6 +18,12 @@ install_3proxy() {
 
     # Tạo thư mục nếu chưa có
     mkdir -p /usr/local/etc/3proxy/{bin,logs,stat}
+
+    # Kiểm tra file đã biên dịch
+    if [ ! -f src/3proxy ]; then
+        echo "File 3proxy không được tạo ra sau khi biên dịch!"
+        exit 1
+    fi
 
     # Sao chép file 3proxy vào thư mục bin
     cp src/3proxy /usr/local/etc/3proxy/bin/3proxy || { echo "Không thể sao chép file 3proxy!"; exit 1; }
