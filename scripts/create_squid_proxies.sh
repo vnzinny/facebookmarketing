@@ -41,18 +41,18 @@ for ((i=0; i<100; i++)); do
     # Thêm tên người dùng và mật khẩu vào file xác thực
     htpasswd -b $htpasswd_file $username $password
 
-    # Thêm cấu hình cho địa chỉ IPv6
-    echo "tcp_outgoing_address $ipv6" >> $squid_conf
+    # Thêm cấu hình cho địa chỉ IPv6 và cổng
     echo "http_port $port" >> $squid_conf
+    echo "tcp_outgoing_address $ipv6" >> $squid_conf
 
     # Thêm thông tin proxy vào danh sách
     proxy_list+=("$ipv4_address:$port:$username:$password")
 
-    echo "Proxy đang chạy trên $ipv4_address:$port chuyển tiếp đến $ipv6 với tên người dùng $username và mật khẩu $password"
+    echo "Proxy đang chạy trên $ipv4_address:$port với tên người dùng $username và mật khẩu $password chuyển tiếp đến $ipv6"
 done
 
 # Khởi động Squid
-sudo systemctl start squid
+sudo systemctl restart squid
 sudo systemctl enable squid
 
 # Xuất danh sách proxy
