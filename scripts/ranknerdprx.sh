@@ -78,7 +78,12 @@ gen_ifconfig() {
     echo "Thêm địa chỉ IPv6 vào giao diện mạng..."
     while IFS= read -r line; do
         IPV6=$(echo $line | cut -d "/" -f 5)
-        ip -6 addr add $IPV6/64 dev eth0
+        if ! ip -6 addr show dev eth0 | grep -q "$IPV6"; then
+            echo "ip -6 addr add $IPV6/64 dev eth0"
+            ip -6 addr add $IPV6/64 dev eth0
+        else
+            echo "Địa chỉ IPv6 $IPV6 đã tồn tại, bỏ qua."
+        fi
     done < ${WORKDIR}/data.txt
 }
 
