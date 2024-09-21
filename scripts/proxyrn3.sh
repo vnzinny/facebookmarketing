@@ -106,8 +106,6 @@ echo "working folder = /home/cloudfly"
 WORKDIR="/home/cloudfly"
 WORKDATA="${WORKDIR}/data.txt"
 mkdir $WORKDIR && cd $_
-# Gọi hàm để thực hiện
-create_ipv6_file
 
 IP4=$(curl -4 -s icanhazip.com)
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
@@ -127,6 +125,8 @@ done
 LAST_PORT=$(($FIRST_PORT + 100))
 echo "LAST_PORT is $LAST_PORT. Continue..."
 
+#Gọi hàm để thực hiện
+create_ipv6_file >$WORKDIR/fixed_ipv6.txt
 gen_data >$WORKDIR/data.txt
 gen_iptables >$WORKDIR/boot_iptables.sh
 gen_ifconfig >$WORKDIR/boot_ifconfig.sh
