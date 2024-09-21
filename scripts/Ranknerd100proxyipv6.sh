@@ -82,15 +82,22 @@ EOF
 }
 
 upload_proxy() {
-    cd $WORKDIR
-    local PASS=$(random)
-    zip --password $PASS proxy.zip proxy.txt
-    URL=$(curl -s --upload-file proxy.zip https://transfer.sh/proxy.zip)
+  cd $WORKDIR
+  local PASS=$(random)
+  zip --password $PASS proxy.zip proxy.txt
 
-    echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
-    echo "Download zip archive from: ${URL}"
-    echo "Password: ${PASS}"
+  # In nội dung của file proxy.txt ra màn hình
+  cat proxy.txt
 
+  echo "Proxy is ready! Format IP:PORT:LOGIN:PASS"
+  echo "**Content:**"
+  # Thay thế "cat" bằng lệnh ưa thích để hiển thị từng dòng (ví dụ: head, awk)
+  cat proxy.txt
+
+  echo "Password: ${PASS}"
+
+  # Xóa file zip tạm thời (tùy chọn)
+  rm -f proxy.zip
 }
 gen_data() {
     while IFS= read -r ipv6; do
