@@ -41,9 +41,10 @@ PORT_START=8080
 count=0
 
 # Tạo file cấu hình cho 3proxy
-CONFIG_FILE="/etc/3proxy.cfg"
 echo "nserver 8.8.8.8" > $CONFIG_FILE
 echo "nserver 8.8.4.4" >> $CONFIG_FILE
+echo "nserver 2001:4860:4860::8888" >> $CONFIG_FILE  # DNS IPv6
+echo "nserver 2001:4860:4860::8844" >> $CONFIG_FILE  # DNS IPv6
 echo "timeouts 1 5 30 60 180 1800 15 60" >> $CONFIG_FILE
 echo "daemon" >> $CONFIG_FILE
 echo "log /var/log/3proxy/3proxy.log D" >> $CONFIG_FILE
