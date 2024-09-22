@@ -1,12 +1,4 @@
 #!/bin/bash
-
-# Dừng dịch vụ 3proxy nếu đang chạy
-echo "Dừng dịch vụ 3proxy cũ..."
-if ! systemctl stop 3proxy; then
-    echo "Không thể dừng dịch vụ 3proxy."
-    exit 1
-fi
-
 # Tắt tường lửa (firewalld)
 echo "Tắt tường lửa..."
 if ! systemctl stop firewalld; then
