@@ -1,38 +1,30 @@
 #!/bin/bash
 
-# Đường dẫn tới file xác thực và file cấu hình Squid
-htpasswd_file="/etc/squid/squid_passwd"
+# Đường dẫn đến tệp cấu hình Squid và tệp xác thực
 squid_conf="/etc/squid/squid.conf"
+htpasswd_file="/etc/squid/squid_passwd"
 
-# Dừng dịch vụ Squid
-sudo systemctl stop squid
-
-# Xóa file xác thực
-if [ -f "$htpasswd_file" ]; then
-    sudo rm -f "$htpasswd_file"
-    echo "Đã xóa file xác thực: $htpasswd_file"
-else
-    echo "File xác thực không tồn tại."
-fi
-
-# Khôi phục lại cấu hình Squid gốc
+# Kiểm tra xem có tệp sao lưu cấu hình không
 if [ -f "$squid_conf.bak" ]; then
-    sudo mv "$squid_conf.bak" "$squid_conf"
-    echo "Đã khôi phục lại cấu hình Squid."
+    echo "Khôi phục tệp cấu hình Squid từ bản sao lưu..."
+    mv $squid_conf.bak $squid_conf
 else
-    echo "File cấu hình gốc không tồn tại."
+    echo "Không tìm thấy tệp sao lưu. Khôi phục thủ công cấu hình."
 fi
 
-# Khởi động lại dịch vụ Squid
-sudo systemctl start squid
+# Xóa tệp xác thực nếu có
+if [ -f "$htpasswd_file" ]; then
+    echo "Xóa tệp xác thực..."
+    rm -f $htpasswd_file
+else
+    echo "Không tìm thấy tệp xác thực."
+fi
 
-# Xóa cổng đã mở trong firewall
-for ((i=0; i<100; i++)); do
-    port=$((8080 + i))
-    sudo firewall-cmd --remove-port=$port/tcp --permanent
-done
+# Khởi động lại Squid để áp dụng cấu hình mới
+echo "Khởi động lại dịch vụ Squid..."
+sudo systemctl restart squid
 
-# Reload firewall để áp dụng thay đổi
-sudo firewall-cmd --reload
+# Tắt Squid khỏi khởi động cùng hệ thống (nếu cần)
+sudo systemctl disable squid
 
-echo "Đã xóa tất cả cấu hình proxy và quy tắc firewall."
+echo "Hoàn tất gỡ bỏ cấu hình proxy."
