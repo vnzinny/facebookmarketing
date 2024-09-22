@@ -19,7 +19,7 @@ touch $htpasswd_file
 # Cấu hình Squid
 squid_conf="/etc/squid/squid.conf"
 cp $squid_conf $squid_conf.bak  # Sao lưu cấu hình hiện tại
-echo "http_port 3128" > $squid_conf  # Cấu hình cổng mặc định
+echo "http_port $ipv4_address:3128" > $squid_conf  # Cấu hình cổng mặc định với IPv4
 echo "auth_param basic program /usr/lib64/squid/basic_ncsa_auth $htpasswd_file" >> $squid_conf
 echo "auth_param basic realm Proxy" >> $squid_conf
 echo "acl authenticated proxy_auth REQUIRED" >> $squid_conf
@@ -29,7 +29,7 @@ echo "http_access deny all" >> $squid_conf
 # Khởi tạo danh sách proxy
 proxy_list=()
 
-# Cấu hình IPv6 cho cổng 8080 đến 8179
+# Tạo các proxy
 for ((i=0; i<100; i++)); do
     ipv6="${ipv6_addresses[i]}"
     port=$((8080 + i))  # Tạo port bắt đầu từ 8080
@@ -41,43 +41,22 @@ for ((i=0; i<100; i++)); do
     # Thêm tên người dùng và mật khẩu vào file xác thực
     htpasswd -b $htpasswd_file $username $password
 
-    # Thêm cấu hình cho từng cổng và địa chỉ IPv6
-    echo "http_port [$ipv6]:$port" >> $squid_conf
-    
-    # Tạo ACL cho cổng cụ thể
-    echo "acl port$i myportname $port" >> $squid_conf
-    
-    # Áp dụng địa chỉ IPv6 cho ACL của cổng
-    echo "tcp_outgoing_address $ipv6 port$i" >> $squid_conf
-
-    # Ngăn không cho cổng sử dụng IPv4
-    echo "tcp_outgoing_address none port$i" >> $squid_conf
+    # Cấu hình cho từng port và IPv6
+    if (( port <= 8179 )); then
+        echo "http_port $ipv4_address:$port" >> $squid_conf
+        echo "tcp_outgoing_address $ipv6 $port" >> $squid_conf  # Sử dụng IPv6 cho các cổng 8080-8179
+    elif (( port == 8180 )); then
+        echo "http_port $ipv4_address:$port" >> $squid_conf
+        echo "tcp_outgoing_address $ipv4_address $port" >> $squid_conf  # Sử dụng IPv4 cho cổng 8180
+    fi
 
     # Thêm thông tin proxy vào danh sách
-    proxy_list+=("[$ipv6]:$port:$username:$password")
+    proxy_list+=("$ipv4_address:$port:$username:$password")
 
-    echo "Proxy đang chạy trên [$ipv6]:$port với tên người dùng $username và mật khẩu $password."
+    echo "Proxy đang chạy trên $ipv4_address:$port với tên người dùng $username và mật khẩu $password, sử dụng $ipv6 cho kết nối ra ngoài"
 done
 
-# Cấu hình chỉ IPv4 cho cổng 8180
-port_ipv4=8180
-username="user_ipv4"
-password=$(openssl rand -base64 12)
-
-# Thêm tên người dùng và mật khẩu vào file xác thực
-htpasswd -b $htpasswd_file $username $password
-
-# Cấu hình cổng 8180 cho IPv4
-echo "http_port $ipv4_address:$port_ipv4" >> $squid_conf
-echo "acl port_ipv4 myportname $port_ipv4" >> $squid_conf
-echo "tcp_outgoing_address $ipv4_address port_ipv4" >> $squid_conf
-
-# Thêm thông tin proxy IPv4 vào danh sách
-proxy_list+=("$ipv4_address:$port_ipv4:$username:$password")
-
-echo "Proxy đang chạy trên $ipv4_address:$port_ipv4 với tên người dùng $username và mật khẩu $password chỉ sử dụng IPv4."
-
-# Khởi động lại Squid
+# Khởi động Squid
 sudo systemctl restart squid
 sudo systemctl enable squid
 
