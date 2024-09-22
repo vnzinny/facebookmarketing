@@ -18,6 +18,17 @@ fi
 echo "Vô hiệu hóa tường lửa khởi động cùng hệ thống..."
 systemctl disable firewalld
 
+# Gỡ cài đặt 3proxy cũ nếu có
+echo "Gỡ cài đặt 3proxy cũ (nếu có)..."
+if ! yum remove -y 3proxy; then
+    echo "Không thể gỡ cài đặt 3proxy."
+    exit 1
+fi
+
+# Gỡ bỏ các gói không cần thiết
+echo "Gỡ bỏ các gói không cần thiết..."
+yum remove -y epel-release gcc make git
+
 # Cài đặt các gói cần thiết cho biên dịch
 echo "Cài đặt các gói cần thiết..."
 yum install -y epel-release gcc make git
@@ -36,7 +47,7 @@ make -f Makefile.Linux
 # Cài đặt 3proxy
 echo "Cài đặt 3proxy..."
 mkdir -p /usr/local/etc/3proxy/bin
-sudo cp /usr/local/src/3proxy /usr/local/etc/3proxy/bin
+sudo cp src/3proxy /usr/local/etc/3proxy/bin
 sudo cp /usr/local/src/3proxy/scripts/init.d/3proxy.sh /etc/init.d/3proxy
 
 # Thiết lập khởi động tự động cho 3proxy
