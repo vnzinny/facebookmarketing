@@ -1,100 +1,87 @@
 #!/bin/bash
 
-# Cập nhật hệ thống và cài đặt các gói cần thiết
-dnf update -y
-dnf install -y dante-server firewalld
+# Cài đặt các gói cần thiết trên AlmaLinux 8
+yum install -y dante-server
 
-# Bật và khởi động firewalld nếu chưa chạy
-systemctl enable firewalld
-systemctl start firewalld
+# File cấu hình dante
+config_file="/etc/sockd.conf"
 
-# Lấy địa chỉ IPv4 của VPS
-ipv4=$(hostname -I | awk '{print $1}')
-echo "Địa chỉ IPv4 của VPS: $ipv4"
-
-# Lấy danh sách IPv6 có sẵn
-ipv6_list=$(ip -6 addr show scope global | grep inet6 | awk '{print $2}' | cut -d '/' -f1)
-
-# Kiểm tra và in danh sách IPv6
-echo "Danh sách IPv6 hợp lệ đã tìm thấy:"
-ipv6_count=0
-for ipv6 in $ipv6_list; do
-    echo "$ipv6"
-    ((ipv6_count++))
-done
-
-echo "Tổng số IPv6 hợp lệ: $ipv6_count"
-
-# Tạo file cấu hình sockd
-cat <<EOT > /etc/sockd.conf
+# Tạo file cấu hình Dante với các chỉnh sửa
+cat <<EOL > $config_file
 logoutput: /var/log/sockd.log
 
-# Địa chỉ cho SOCKS Proxy
 internal: eth0 port = 1080
 external: eth0
 
-# Quy tắc truy cập
-client pass {
+# Quy tắc client - từ khóa "socks pass" thay cho "pass"
+client socks pass {
     from: 0.0.0.0/0 to: 0.0.0.0/0
     log: connect disconnect
 }
 
-# Quy tắc cho phép
-pass {
+# Quy tắc server - từ khóa "socks pass" thay cho "pass"
+socks pass {
     from: 0.0.0.0/0 to: 0.0.0.0/0
     log: connect disconnect
 }
-EOT
 
-# Tạo file dịch vụ systemd cho sockd
-cat <<EOT > /etc/systemd/system/sockd.service
-[Unit]
-Description=Dante SOCKS Proxy Server
-After=network.target
+# Quyền user cho dante
+user.privileged: root
+user.unprivileged: nobody
 
-[Service]
-ExecStart=/usr/sbin/sockd -f /etc/sockd.conf
-ExecReload=/bin/kill -HUP \$MAINPID
-PIDFile=/var/run/sockd.pid
+# Đặt quyền cho các file được tạo
+user.libwrap: nobody
+EOL
 
-[Install]
-WantedBy=multi-user.target
-EOT
+echo "Cấu hình Dante đã được tạo tại $config_file"
 
-# Reload systemd để nhận file dịch vụ mới
-systemctl daemon-reload
+# Tự động lấy các địa chỉ IPv6 trên VPS
+ipv6_list=$(ip -6 addr show scope global | awk '/inet6/{print $2}' | cut -d/ -f1)
+ipv4_address=$(curl -s ipv4.icanhazip.com)
 
-# Mở port 1080 trong firewall
-firewall-cmd --add-port=1080/tcp --permanent
-firewall-cmd --reload
+# Nếu không lấy được danh sách IPv6
+if [ -z "$ipv6_list" ]; then
+    echo "Không tìm thấy địa chỉ IPv6 hợp lệ trên VPS."
+    exit 1
+fi
 
-# Bật và khởi động dịch vụ sockd
-systemctl enable sockd
-systemctl start sockd
+# Hiển thị các địa chỉ IPv6 đã lấy
+echo "Danh sách IPv6 đã tìm thấy:"
+echo "$ipv6_list"
 
-# Tạo proxy với thông tin đăng nhập ngẫu nhiên và xuất ra file
-output_file="proxy_list.txt"
+# Tạo proxy từ các địa chỉ IPv6 lấy được
 port_start=10000
-
-echo "Tạo danh sách proxy với thông tin đăng nhập ngẫu nhiên..."
-
+output_file="proxy_list.txt"
 > $output_file
+
+index=1
 for ipv6 in $ipv6_list; do
-    user=$(openssl rand -hex 4)
-    pass=$(openssl rand -hex 4)
-    port=$((port_start++))
+    port=$((port_start + index))
+    user="user$index"
+    pass="pass$index"
     
-    echo "$ipv4:$port:$user:$pass" >> $output_file
-    echo "user.privileged: $user" >> /etc/sockd.conf
-    echo "password: $pass" >> /etc/sockd.conf
-    echo "client pass { from: 0.0.0.0/0 to: 0.0.0.0/0 log: connect disconnect }" >> /etc/sockd.conf
-    echo "socks pass { from: $ipv6 to: 0.0.0.0/0 log: connect disconnect }" >> /etc/sockd.conf
+    # Cập nhật vào file cấu hình sockd.conf
+    echo "socks pass {" >> $config_file
+    echo "    from: $ipv6 to: 0.0.0.0/0" >> $config_file
+    echo "    log: connect disconnect" >> $config_file
+    echo "}" >> $config_file
+    
+    # Ghi proxy vào file output
+    echo "$ipv4_address:$port:$user:$pass" >> $output_file
+    
+    index=$((index + 1))
 done
 
 echo "Danh sách proxy đã tạo:"
 cat $output_file
 
-# Kiểm tra trạng thái dịch vụ
+# Khởi động lại dịch vụ sockd
+systemctl restart sockd
+
+# Kiểm tra trạng thái dịch vụ sockd
 systemctl status sockd
 
-echo "Cấu hình và tạo proxy hoàn thành!"
+# Nếu có lỗi, kiểm tra log
+if [ $? -ne 0 ]; then
+    echo "Dịch vụ sockd gặp lỗi, kiểm tra log tại /var/log/sockd.log"
+fi
