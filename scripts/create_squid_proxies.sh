@@ -48,7 +48,7 @@ for ((i=0; i<100; i++)); do
     echo "acl port$i myportname $port" >> $squid_conf
     
     # Áp dụng địa chỉ IPv6 cho ACL của cổng
-    echo "tcp_outgoing_address $ipv6 port$i" >> $squid_conf  # Sử dụng IPv6 cho việc chuyển tiếp
+    echo "tcp_outgoing_address $ipv6 port$i" >> $squid_conf  # Sử dụng địa chỉ IPv6 cho việc chuyển tiếp
 
     # Thêm quy tắc để chỉ cho phép sử dụng IPv6
     echo "http_access deny all" >> $squid_conf
