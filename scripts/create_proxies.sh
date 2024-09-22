@@ -55,7 +55,7 @@ echo "nserver 2001:4860:4860::8888" >> "$CONFIG_FILE"  # DNS IPv6
 echo "nserver 2001:4860:4860::8844" >> "$CONFIG_FILE"  # DNS IPv6
 echo "timeouts 1 5 30 60 180 1800 15 60" >> "$CONFIG_FILE"
 echo "daemon" >> "$CONFIG_FILE"
-echo "log /var/log/3proxy/3proxy.log D" >> "$CONFIG_FILE"
+echo "log /var/log/3proxy/3proxy.log" >> "$CONFIG_FILE"
 echo "auth strong" >> "$CONFIG_FILE"
 
 # Tạo proxy từ IPv6
