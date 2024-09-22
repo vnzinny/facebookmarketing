@@ -16,11 +16,8 @@ echo "Danh sách địa chỉ IPv6: $IPV6_LIST"
 PROXY_LIST=()
 PORT_START=8080
 
-# Đếm số lượng IPv6
-count=0
-
 # Tạo file cấu hình cho 3proxy
-CONFIG_FILE="/etc/3proxy/3proxy.cfg"
+CONFIG_FILE="/etc/3proxy.cfg"
 echo "nserver 8.8.8.8" > $CONFIG_FILE
 
 # Tạo proxy từ IPv6
