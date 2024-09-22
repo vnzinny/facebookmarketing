@@ -42,7 +42,7 @@ for ((i=0; i<100; i++)); do
     htpasswd -b $htpasswd_file $username $password
 
     # Thêm cấu hình cho từng cổng và địa chỉ IPv6
-    echo "http_port $port" >> $squid_conf
+    echo "http_port [$ipv6]:$port" >> $squid_conf
     
     # Tạo ACL cho cổng cụ thể
     echo "acl port$i myportname $port" >> $squid_conf
@@ -54,9 +54,9 @@ for ((i=0; i<100; i++)); do
     echo "tcp_outgoing_address none port$i" >> $squid_conf
 
     # Thêm thông tin proxy vào danh sách
-    proxy_list+=("$ipv4_address:$port:$username:$password")
+    proxy_list+=("[$ipv6]:$port:$username:$password")
 
-    echo "Proxy đang chạy trên $ipv4_address:$port với tên người dùng $username và mật khẩu $password chuyển tiếp đến $ipv6"
+    echo "Proxy đang chạy trên [$ipv6]:$port với tên người dùng $username và mật khẩu $password."
 done
 
 # Cấu hình chỉ IPv4 cho cổng 8180
@@ -68,7 +68,7 @@ password=$(openssl rand -base64 12)
 htpasswd -b $htpasswd_file $username $password
 
 # Cấu hình cổng 8180 cho IPv4
-echo "http_port $port_ipv4" >> $squid_conf
+echo "http_port $ipv4_address:$port_ipv4" >> $squid_conf
 echo "acl port_ipv4 myportname $port_ipv4" >> $squid_conf
 echo "tcp_outgoing_address $ipv4_address port_ipv4" >> $squid_conf
 
