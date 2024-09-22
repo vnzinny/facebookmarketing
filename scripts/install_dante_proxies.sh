@@ -1,85 +1,100 @@
 #!/bin/bash
 
-# Kiểm tra quyền truy cập root
-if [ "$EUID" -ne 0 ]; then
-  echo "Vui lòng chạy với quyền root."
-  exit 1
-fi
+# Cập nhật hệ thống và cài đặt các gói cần thiết
+dnf update -y
+dnf install -y dante-server firewalld
 
-# Cài đặt các gói cần thiết
-echo "Cài đặt các gói cần thiết..."
-dnf install epel-release -y
-dnf install dante-server -y
-dnf install iproute -y # Đảm bảo cài đặt iproute để lấy địa chỉ IP
+# Bật và khởi động firewalld nếu chưa chạy
+systemctl enable firewalld
+systemctl start firewalld
 
 # Lấy địa chỉ IPv4 của VPS
-ipv4_address=$(hostname -I | awk '{print $1}')
+ipv4=$(hostname -I | awk '{print $1}')
+echo "Địa chỉ IPv4 của VPS: $ipv4"
 
-# Lấy danh sách địa chỉ IPv6 có sẵn
-ipv6_array=($(ip -6 addr show | grep -oP '(?<=inet6\s)[\da-f:]+'))
+# Lấy danh sách IPv6 có sẵn
+ipv6_list=$(ip -6 addr show scope global | grep inet6 | awk '{print $2}' | cut -d '/' -f1)
 
-# Đếm số lượng địa chỉ IPv6
-valid_count=${#ipv6_array[@]}
-echo "Số lượng địa chỉ IPv6 tìm thấy: $valid_count"
-
-# In danh sách IPv6 ra màn hình
-echo "Danh sách địa chỉ IPv6 đã lấy được:"
-printf '%s\n' "${ipv6_array[@]}"
-
-# Tạo file cấu hình Dante
-config_file="/etc/danted.conf"
-echo "Tạo file cấu hình Dante..."
-cat <<EOL > $config_file
-logoutput: /var/log/danted.log
-socksmethod: username
-user.privileged: root
-user.unprivileged: nobody
-client pass { from: 0.0.0.0/0 to: 0.0.0.0/0 }
-pass { from: 0.0.0.0/0 to: 0.0.0.0/0 }
-EOL
-
-# Tạo proxy và danh sách thông tin đăng nhập
-echo "Đang tạo proxy..."
-output_file="proxy_list.txt"
-rm -f $output_file
-
-for ((i=0; i<valid_count; i++)); do
-  ipv6="${ipv6_array[i]}"
-  port=$((1080 + i)) # Bắt đầu từ port 1080
-  user="user$i"
-  pass="pass$RANDOM"
-
-  # Cập nhật cấu hình cho mỗi proxy
-  echo "internal: $ipv4_address port = $port" >> $config_file
-  echo "external: $ipv6" >> $config_file
-
-  # Xuất thông tin proxy
-  echo "$ipv4_address:$port:$user:$pass" >> $output_file
+# Kiểm tra và in danh sách IPv6
+echo "Danh sách IPv6 hợp lệ đã tìm thấy:"
+ipv6_count=0
+for ipv6 in $ipv6_list; do
+    echo "$ipv6"
+    ((ipv6_count++))
 done
 
-# Tạo file dịch vụ cho Dante
-service_file="/etc/systemd/system/danted.service"
-echo "Tạo file dịch vụ cho Dante..."
-cat <<EOL > $service_file
+echo "Tổng số IPv6 hợp lệ: $ipv6_count"
+
+# Tạo file cấu hình sockd
+cat <<EOT > /etc/sockd.conf
+logoutput: /var/log/sockd.log
+
+# Địa chỉ cho SOCKS Proxy
+internal: eth0 port = 1080
+external: eth0
+
+# Quy tắc truy cập
+client pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    log: connect disconnect
+}
+
+# Quy tắc cho phép
+pass {
+    from: 0.0.0.0/0 to: 0.0.0.0/0
+    log: connect disconnect
+}
+EOT
+
+# Tạo file dịch vụ systemd cho sockd
+cat <<EOT > /etc/systemd/system/sockd.service
 [Unit]
 Description=Dante SOCKS Proxy Server
 After=network.target
 
 [Service]
-Type=simple
-ExecStart=/usr/sbin/danted -f /etc/danted.conf
-Restart=on-failure
+ExecStart=/usr/sbin/sockd -f /etc/sockd.conf
+ExecReload=/bin/kill -HUP \$MAINPID
+PIDFile=/var/run/sockd.pid
 
 [Install]
 WantedBy=multi-user.target
-EOL
+EOT
 
-# Khởi động lại dịch vụ Dante
-echo "Khởi động lại dịch vụ Dante..."
+# Reload systemd để nhận file dịch vụ mới
 systemctl daemon-reload
-systemctl start danted
-systemctl enable danted
 
-# In danh sách proxy ra màn hình
-echo "Hoàn thành! Danh sách proxy đã được lưu trong $output_file:"
+# Mở port 1080 trong firewall
+firewall-cmd --add-port=1080/tcp --permanent
+firewall-cmd --reload
+
+# Bật và khởi động dịch vụ sockd
+systemctl enable sockd
+systemctl start sockd
+
+# Tạo proxy với thông tin đăng nhập ngẫu nhiên và xuất ra file
+output_file="proxy_list.txt"
+port_start=10000
+
+echo "Tạo danh sách proxy với thông tin đăng nhập ngẫu nhiên..."
+
+> $output_file
+for ipv6 in $ipv6_list; do
+    user=$(openssl rand -hex 4)
+    pass=$(openssl rand -hex 4)
+    port=$((port_start++))
+    
+    echo "$ipv4:$port:$user:$pass" >> $output_file
+    echo "user.privileged: $user" >> /etc/sockd.conf
+    echo "password: $pass" >> /etc/sockd.conf
+    echo "client pass { from: 0.0.0.0/0 to: 0.0.0.0/0 log: connect disconnect }" >> /etc/sockd.conf
+    echo "socks pass { from: $ipv6 to: 0.0.0.0/0 log: connect disconnect }" >> /etc/sockd.conf
+done
+
+echo "Danh sách proxy đã tạo:"
 cat $output_file
+
+# Kiểm tra trạng thái dịch vụ
+systemctl status sockd
+
+echo "Cấu hình và tạo proxy hoàn thành!"
