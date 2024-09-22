@@ -20,7 +20,7 @@ touch $htpasswd_file
 squid_conf="/etc/squid/squid.conf"
 cp $squid_conf $squid_conf.bak  # Sao lưu cấu hình hiện tại
 echo "http_port 3128" > $squid_conf  # Cấu hình cổng mặc định
-echo "auth_param basic program /usr/lib/squid/basic_ncsa_auth $htpasswd_file" >> $squid_conf
+echo "auth_param basic program /usr/lib64/squid/basic_ncsa_auth $htpasswd_file" >> $squid_conf
 echo "auth_param basic realm Proxy" >> $squid_conf
 echo "acl authenticated proxy_auth REQUIRED" >> $squid_conf
 echo "http_access allow authenticated" >> $squid_conf
