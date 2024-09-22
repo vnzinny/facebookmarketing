@@ -29,7 +29,7 @@ echo "http_access deny all" >> $squid_conf
 # Khởi tạo danh sách proxy
 proxy_list=()
 
-# Tạo các proxy
+# Cấu hình IPv6 cho cổng 8080 đến 8179
 for ((i=0; i<100; i++)); do
     ipv6="${ipv6_addresses[i]}"
     port=$((8080 + i))  # Tạo port bắt đầu từ 8080
@@ -50,15 +50,34 @@ for ((i=0; i<100; i++)); do
     # Áp dụng địa chỉ IPv6 cho ACL của cổng
     echo "tcp_outgoing_address $ipv6 port$i" >> $squid_conf
 
+    # Ngăn không cho cổng sử dụng IPv4
+    echo "tcp_outgoing_address none port$i" >> $squid_conf
+
     # Thêm thông tin proxy vào danh sách
     proxy_list+=("$ipv4_address:$port:$username:$password")
 
     echo "Proxy đang chạy trên $ipv4_address:$port với tên người dùng $username và mật khẩu $password chuyển tiếp đến $ipv6"
 done
 
+# Cấu hình chỉ IPv4 cho cổng 8180
+port_ipv4=8180
+username="user_ipv4"
+password=$(openssl rand -base64 12)
 
+# Thêm tên người dùng và mật khẩu vào file xác thực
+htpasswd -b $htpasswd_file $username $password
 
-# Khởi động Squid
+# Cấu hình cổng 8180 cho IPv4
+echo "http_port $port_ipv4" >> $squid_conf
+echo "acl port_ipv4 myportname $port_ipv4" >> $squid_conf
+echo "tcp_outgoing_address $ipv4_address port_ipv4" >> $squid_conf
+
+# Thêm thông tin proxy IPv4 vào danh sách
+proxy_list+=("$ipv4_address:$port_ipv4:$username:$password")
+
+echo "Proxy đang chạy trên $ipv4_address:$port_ipv4 với tên người dùng $username và mật khẩu $password chỉ sử dụng IPv4."
+
+# Khởi động lại Squid
 sudo systemctl restart squid
 sudo systemctl enable squid
 
@@ -67,6 +86,3 @@ echo -e "\nDanh sách proxy đã tạo:"
 for proxy in "${proxy_list[@]}"; do
     echo "$proxy"
 done
-
-# Đợi Squid chạy
-wait
