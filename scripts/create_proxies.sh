@@ -8,8 +8,8 @@ yum install -y 3proxy
 VPS_IPV4=$(curl -s ifconfig.me)
 echo "IPv4 của VPS: $VPS_IPV4"
 
-# Lấy danh sách địa chỉ IPv6
-IPV6_LIST=$(ip -6 addr show | grep 'inet6' | awk '{print $2}' | grep -v '::1')
+# Lấy danh sách địa chỉ IPv6, loại bỏ phần CIDR
+IPV6_LIST=$(ip -6 addr show | grep 'inet6' | awk '{print $2}' | grep -v '::1' | cut -d/ -f1)
 echo "Danh sách địa chỉ IPv6: $IPV6_LIST"
 
 # Biến để lưu danh sách proxy
