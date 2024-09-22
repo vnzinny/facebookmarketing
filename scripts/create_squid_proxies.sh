@@ -19,7 +19,7 @@ touch $htpasswd_file
 # Cấu hình Squid
 squid_conf="/etc/squid/squid.conf"
 cp $squid_conf $squid_conf.bak  # Sao lưu cấu hình hiện tại
-echo "http_port $ipv4_address:3128" > $squid_conf  # Cấu hình cổng mặc định với IPv4
+echo "http_port 3128" > $squid_conf  # Cấu hình cổng mặc định
 echo "auth_param basic program /usr/lib64/squid/basic_ncsa_auth $htpasswd_file" >> $squid_conf
 echo "auth_param basic realm Proxy" >> $squid_conf
 echo "acl authenticated proxy_auth REQUIRED" >> $squid_conf
@@ -41,19 +41,23 @@ for ((i=0; i<100; i++)); do
     # Thêm tên người dùng và mật khẩu vào file xác thực
     htpasswd -b $htpasswd_file $username $password
 
-    # Cấu hình cho từng port và IPv6
-    if (( port <= 8179 )); then
-        echo "http_port $ipv4_address:$port" >> $squid_conf
-        echo "tcp_outgoing_address $ipv6 $port" >> $squid_conf  # Sử dụng IPv6 cho các cổng 8080-8179
-    elif (( port == 8180 )); then
-        echo "http_port $ipv4_address:$port" >> $squid_conf
-        echo "tcp_outgoing_address $ipv4_address $port" >> $squid_conf  # Sử dụng IPv4 cho cổng 8180
-    fi
+    # Thêm cấu hình cho từng cổng
+    echo "http_port $ipv4_address:$port" >> $squid_conf  # Sử dụng địa chỉ IPv4 cho thông tin đăng nhập
+
+    # Tạo ACL cho cổng cụ thể
+    echo "acl port$i myportname $port" >> $squid_conf
+    
+    # Áp dụng địa chỉ IPv6 cho ACL của cổng
+    echo "tcp_outgoing_address $ipv6 port$i" >> $squid_conf  # Sử dụng IPv6 cho việc chuyển tiếp
+
+    # Thêm quy tắc để chỉ cho phép sử dụng IPv6
+    echo "http_access deny all" >> $squid_conf
+    echo "http_access allow port$i" >> $squid_conf  # Cho phép truy cập cho cổng cụ thể
 
     # Thêm thông tin proxy vào danh sách
     proxy_list+=("$ipv4_address:$port:$username:$password")
 
-    echo "Proxy đang chạy trên $ipv4_address:$port với tên người dùng $username và mật khẩu $password, sử dụng $ipv6 cho kết nối ra ngoài"
+    echo "Proxy đang chạy trên $ipv4_address:$port với tên người dùng $username và mật khẩu $password, chuyển tiếp đến $ipv6"
 done
 
 # Khởi động Squid
@@ -65,3 +69,6 @@ echo -e "\nDanh sách proxy đã tạo:"
 for proxy in "${proxy_list[@]}"; do
     echo "$proxy"
 done
+
+# Đợi Squid chạy
+wait
