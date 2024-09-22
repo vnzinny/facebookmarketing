@@ -15,30 +15,16 @@ dnf install iproute -y # Đảm bảo cài đặt iproute để lấy địa ch�
 # Lấy địa chỉ IPv4 của VPS
 ipv4_address=$(hostname -I | awk '{print $1}')
 
-# Lấy danh sách địa chỉ IPv6 có sẵn và lọc các địa chỉ hợp lệ
+# Lấy danh sách địa chỉ IPv6 có sẵn
 ipv6_array=($(ip -6 addr show | grep -oP '(?<=inet6\s)[\da-f:]+'))
 
-# Loại bỏ các địa chỉ IPv6 không đúng định dạng
-valid_ipv6=()
-for ipv6 in "${ipv6_array[@]}"; do
-  if [[ $ipv6 =~ ^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$ || $ipv6 =~ ^([0-9a-fA-F]{1,4}:){1,7}:$ || $ipv6 =~ ^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$ || $ipv6 =~ ^([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}$ || $ipv6 =~ ^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}$ || $ipv6 =~ ^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}$ || $ipv6 =~ ^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}$ || $ipv6 =~ ^[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})$ || $ipv6 =~ ^:((:[0-9a-fA-F]{1,4}){1,7}|:)$ || $ipv6 =~ ^fe80::([0-9a-fA-F]{1,4}:){0,4}([0-9a-fA-F]{1,4})$ || $ipv6 =~ ^::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)))$ ]]; then
-    valid_ipv6+=("$ipv6")
-  fi
-done
-
-# Đếm số lượng địa chỉ IPv6 hợp lệ
-valid_count=${#valid_ipv6[@]}
-echo "Số lượng địa chỉ IPv6 hợp lệ: $valid_count"
-
-# Nếu không có địa chỉ IPv6 hợp lệ, dừng script
-if [ $valid_count -eq 0 ]; then
-  echo "Không có địa chỉ IPv6 hợp lệ để tạo proxy. Kết thúc script."
-  exit 1
-fi
+# Đếm số lượng địa chỉ IPv6
+valid_count=${#ipv6_array[@]}
+echo "Số lượng địa chỉ IPv6 tìm thấy: $valid_count"
 
 # In danh sách IPv6 ra màn hình
-echo "Danh sách địa chỉ IPv6 hợp lệ đã lấy được:"
-printf '%s\n' "${valid_ipv6[@]}"
+echo "Danh sách địa chỉ IPv6 đã lấy được:"
+printf '%s\n' "${ipv6_array[@]}"
 
 # Tạo file cấu hình Dante
 config_file="/etc/danted.conf"
@@ -58,7 +44,7 @@ output_file="proxy_list.txt"
 rm -f $output_file
 
 for ((i=0; i<valid_count; i++)); do
-  ipv6="${valid_ipv6[i]}"
+  ipv6="${ipv6_array[i]}"
   port=$((1080 + i)) # Bắt đầu từ port 1080
   user="user$i"
   pass="pass$RANDOM"
