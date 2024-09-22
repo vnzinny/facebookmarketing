@@ -1,6 +1,29 @@
 #!/bin/bash
 
-# Cài đặt 3proxy nếu chưa cài
+# Dừng dịch vụ 3proxy nếu đang chạy
+echo "Dừng dịch vụ 3proxy cũ..."
+systemctl stop 3proxy
+
+# Xóa file cấu hình cũ nếu tồn tại
+CONFIG_FILE="/etc/3proxy.cfg"
+if [ -f "$CONFIG_FILE" ]; then
+    echo "Xóa cấu hình cũ..."
+    rm -f "$CONFIG_FILE"
+fi
+
+# Xóa log cũ nếu tồn tại
+LOG_FILE="/var/log/3proxy/3proxy.log"
+if [ -f "$LOG_FILE" ]; then
+    echo "Xóa log cũ..."
+    rm -f "$LOG_FILE"
+fi
+
+# Gỡ cài đặt 3proxy cũ (tùy chọn)
+echo "Gỡ cài đặt 3proxy cũ (nếu có)..."
+yum remove -y 3proxy
+
+# Cài đặt lại 3proxy
+echo "Cài đặt 3proxy..."
 yum install -y epel-release
 yum install -y 3proxy
 
@@ -46,6 +69,7 @@ for IPV6 in $IPV6_LIST; do
 done
 
 # Khởi động dịch vụ 3proxy
+echo "Khởi động lại dịch vụ 3proxy..."
 systemctl restart 3proxy
 systemctl enable 3proxy
 
