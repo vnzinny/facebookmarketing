@@ -20,8 +20,11 @@ count=0
 # Tạo file cấu hình cho 3proxy
 CONFIG_FILE="/etc/3proxy.cfg"
 echo "nserver 8.8.8.8" > $CONFIG_FILE
+echo "nserver 8.8.4.4" >> $CONFIG_FILE
+echo "timeouts 1 5 30 60 180 1800 15 60" >> $CONFIG_FILE
+echo "daemon" >> $CONFIG_FILE
+echo "log /var/log/3proxy/3proxy.log D" >> $CONFIG_FILE
 echo "auth strong" >> $CONFIG_FILE
-echo "allow *" >> $CONFIG_FILE
 
 # Tạo proxy từ IPv6
 for IPV6 in $IPV6_LIST; do
@@ -33,17 +36,17 @@ for IPV6 in $IPV6_LIST; do
     PROXY_LIST+=("$VPS_IPV4:$PORT:$USER:$PASS")
 
     # Thêm cấu hình cho 3proxy
-    echo "proxy -6 -n -a -p$PORT -u $USER -p$PASS" >> $CONFIG_FILE
+    echo "users $USER:CL:$PASS" >> $CONFIG_FILE
+    echo "proxy -6 -n -a -i$IPV6 -e$IPV6 -p$PORT" >> $CONFIG_FILE
+    echo "allow $USER" >> $CONFIG_FILE
+    echo "maxconn 100" >> $CONFIG_FILE
 
     # Tăng biến đếm
     count=$((count + 1))
 done
 
-# Cấp quyền cho file cấu hình
-chmod 600 $CONFIG_FILE
-
 # Khởi động dịch vụ 3proxy
-systemctl start 3proxy
+systemctl restart 3proxy
 systemctl enable 3proxy
 
 # In danh sách proxy
