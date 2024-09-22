@@ -1,41 +1,52 @@
 #!/bin/bash
 
-# Lấy địa chỉ IPv4 của VPS
-ipv4_address=$(hostname -I | awk '{print $1}')
+# Cài đặt 3proxy nếu chưa cài
+yum install -y epel-release
+yum install -y 3proxy
 
-# Đọc 100 địa chỉ IPv6 từ người dùng
-echo "Nhập 100 địa chỉ IPv6 (mỗi địa chỉ trên một dòng):"
-ipv6_addresses=()
+# Địa chỉ IPv4 của VPS
+VPS_IPV4=$(curl -s ifconfig.me)
+echo "IPv4 của VPS: $VPS_IPV4"
 
-for ((i=0; i<100; i++)); do
-    read -p "IPv6 $((i+1)): " ipv6
-    ipv6_addresses+=("$ipv6")
+# Lấy danh sách địa chỉ IPv6
+IPV6_LIST=$(ip -6 addr show | grep 'inet6' | awk '{print $2}' | grep -v '::1')
+echo "Danh sách địa chỉ IPv6: $IPV6_LIST"
+
+# Biến để lưu danh sách proxy
+PROXY_LIST=()
+PORT_START=8080
+
+# Đếm số lượng IPv6
+count=0
+
+# Tạo file cấu hình cho 3proxy
+CONFIG_FILE="/etc/3proxy/3proxy.cfg"
+echo "nserver 8.8.8.8" > $CONFIG_FILE
+
+# Tạo proxy từ IPv6
+for IPV6 in $IPV6_LIST; do
+    PORT=$((PORT_START + count))
+    USER="user$count"
+    PASS=$(openssl rand -base64 12)
+
+    # Thêm thông tin vào danh sách proxy
+    PROXY_LIST+=("$VPS_IPV4:$PORT:$USER:$PASS")
+
+    # Thêm cấu hình cho 3proxy
+    echo "proxy -6 -n -a -p$PORT -u $USER -p$PASS" >> $CONFIG_FILE
+    echo "auth strong" >> $CONFIG_FILE
+    echo "allow *" >> $CONFIG_FILE
+
+    # Tăng biến đếm
+    count=$((count + 1))
 done
 
-# Tạo file xác thực cho Apache
-htpasswd_file="/etc/proxy_passwd"
-touch $htpasswd_file
+# Khởi động dịch vụ 3proxy
+systemctl start 3proxy
+systemctl enable 3proxy
 
-# Tạo các proxy
-for ((i=0; i<100; i++)); do
-    ipv6="${ipv6_addresses[i]}"
-    port=$((8080 + i))  # Tạo port bắt đầu từ 8080
-
-    # Tạo tên người dùng và mật khẩu ngẫu nhiên
-    username="user$i"
-    password=$(openssl rand -base64 12)
-
-    # Thêm tên người dùng và mật khẩu vào file xác thực
-    htpasswd -b $htpasswd_file $username $password
-
-    # Khởi động proxy trên cổng cho mỗi địa chỉ IPv6
-    socat TCP4-LISTEN:$port,fork TCP6:"$ipv6":80 &
-    echo "Proxy đang chạy trên $ipv4_address:$port chuyển tiếp đến $ipv6:80 với tên người dùng $username và mật khẩu $password"
+# In danh sách proxy
+echo "Danh sách proxy:"
+for PROXY in "${PROXY_LIST[@]}"; do
+    echo "$PROXY"
 done
-
-# Khởi động Apache để xử lý xác thực
-sudo systemctl start httpd
-sudo systemctl enable httpd
-
-# Đợi các proxy chạy
-wait
