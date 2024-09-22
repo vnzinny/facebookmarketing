@@ -43,16 +43,12 @@ for ((i=0; i<100; i++)); do
 
     # Thêm cấu hình cho từng cổng
     echo "http_port $ipv4_address:$port" >> $squid_conf  # Sử dụng địa chỉ IPv4 cho thông tin đăng nhập
-
+    
     # Tạo ACL cho cổng cụ thể
     echo "acl port$i myportname $port" >> $squid_conf
     
     # Áp dụng địa chỉ IPv6 cho ACL của cổng
     echo "tcp_outgoing_address $ipv6 port$i" >> $squid_conf  # Sử dụng địa chỉ IPv6 cho việc chuyển tiếp
-
-    # Thêm quy tắc để chỉ cho phép sử dụng IPv6
-    echo "http_access deny all" >> $squid_conf
-    echo "http_access allow port$i" >> $squid_conf  # Cho phép truy cập cho cổng cụ thể
 
     # Thêm thông tin proxy vào danh sách
     proxy_list+=("$ipv4_address:$port:$username:$password")
@@ -77,7 +73,7 @@ echo "acl port_ipv4 myportname $port" >> $squid_conf
 # Áp dụng địa chỉ IPv4 cho ACL của cổng
 echo "tcp_outgoing_address $ipv4_address port_ipv4" >> $squid_conf  # Sử dụng IPv4 cho việc chuyển tiếp
 
-# Quy tắc cho phép sử dụng IPv4
+# Thêm quy tắc cho phép sử dụng IPv4
 echo "http_access allow port_ipv4" >> $squid_conf  # Cho phép truy cập cho cổng 8180
 
 # Thêm thông tin proxy vào danh sách
