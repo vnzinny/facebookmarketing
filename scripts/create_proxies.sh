@@ -7,6 +7,42 @@ if ! systemctl stop 3proxy; then
     exit 1
 fi
 
+# Tắt tường lửa (firewalld)
+echo "Tắt tường lửa..."
+if ! systemctl stop firewalld; then
+    echo "Không thể tắt tường lửa."
+    exit 1
+fi
+
+# Gỡ bỏ tường lửa khởi động cùng hệ thống
+echo "Vô hiệu hóa tường lửa khởi động cùng hệ thống..."
+systemctl disable firewalld
+
+# Cài đặt các gói cần thiết cho biên dịch
+echo "Cài đặt các gói cần thiết..."
+yum install -y epel-release gcc make git
+
+# Tải mã nguồn 3proxy phiên bản 0.9.3
+echo "Tải mã nguồn 3proxy phiên bản 0.9.3..."
+cd /usr/local/src
+git clone https://github.com/z3APA3A/3proxy.git
+cd 3proxy
+git checkout 0.9.3
+
+# Biên dịch 3proxy
+echo "Biên dịch 3proxy..."
+make -f Makefile.Linux
+
+# Cài đặt 3proxy
+echo "Cài đặt 3proxy..."
+mkdir -p /usr/local/etc/3proxy/bin
+cp src/3proxy /usr/local/etc/3proxy/bin
+cp ./scripts/rc.d/proxy.sh /etc/init.d/3proxy
+
+# Thiết lập khởi động tự động cho 3proxy
+echo "Thiết lập khởi động tự động cho 3proxy..."
+chkconfig 3proxy on
+
 # Xóa file cấu hình cũ nếu tồn tại
 CONFIG_FILE="/etc/3proxy.cfg"
 if [ -f "$CONFIG_FILE" ]; then
@@ -19,20 +55,6 @@ LOG_FILE="/var/log/3proxy/3proxy.log"
 if [ -f "$LOG_FILE" ]; then
     echo "Xóa log cũ..."
     rm -f "$LOG_FILE"
-fi
-
-# Gỡ cài đặt 3proxy cũ (tùy chọn)
-echo "Gỡ cài đặt 3proxy cũ (nếu có)..."
-if ! yum remove -y 3proxy; then
-    echo "Không thể gỡ cài đặt 3proxy."
-    exit 1
-fi
-
-# Cài đặt lại 3proxy
-echo "Cài đặt 3proxy..."
-if ! yum install -y epel-release || ! yum install -y 3proxy; then
-    echo "Không thể cài đặt 3proxy."
-    exit 1
 fi
 
 # Địa chỉ IPv4 của VPS
@@ -55,7 +77,7 @@ echo "nserver 2001:4860:4860::8888" >> "$CONFIG_FILE"  # DNS IPv6
 echo "nserver 2001:4860:4860::8844" >> "$CONFIG_FILE"  # DNS IPv6
 echo "timeouts 1 5 30 60 180 1800 15 60" >> "$CONFIG_FILE"
 echo "daemon" >> "$CONFIG_FILE"
-echo "log /var/log/3proxy/3proxy.log" >> "$CONFIG_FILE"
+echo "log /var/log/3proxy/3proxy.log D" >> "$CONFIG_FILE"
 echo "auth strong" >> "$CONFIG_FILE"
 
 # Tạo proxy từ IPv6
@@ -79,13 +101,10 @@ done
 
 # Khởi động dịch vụ 3proxy
 echo "Khởi động lại dịch vụ 3proxy..."
-if ! systemctl restart 3proxy; then
+if ! systemctl start 3proxy; then
     echo "Không thể khởi động lại dịch vụ 3proxy."
     exit 1
 fi
-
-# Kích hoạt 3proxy để khởi động cùng hệ thống
-systemctl enable 3proxy
 
 # In danh sách proxy
 echo "Danh sách proxy:"
