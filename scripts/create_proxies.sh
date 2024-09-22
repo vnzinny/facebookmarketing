@@ -10,17 +10,6 @@ fi
 echo "Vô hiệu hóa tường lửa khởi động cùng hệ thống..."
 systemctl disable firewalld
 
-# Gỡ cài đặt 3proxy cũ nếu có
-echo "Gỡ cài đặt 3proxy cũ (nếu có)..."
-if ! yum remove -y 3proxy; then
-    echo "Không thể gỡ cài đặt 3proxy."
-    exit 1
-fi
-
-# Gỡ bỏ các gói không cần thiết
-echo "Gỡ bỏ các gói không cần thiết..."
-yum remove -y epel-release gcc make git
-
 # Cài đặt các gói cần thiết cho biên dịch
 echo "Cài đặt các gói cần thiết..."
 yum install -y epel-release gcc make git
