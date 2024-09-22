@@ -36,8 +36,8 @@ make -f Makefile.Linux
 # Cài đặt 3proxy
 echo "Cài đặt 3proxy..."
 mkdir -p /usr/local/etc/3proxy/bin
-cp src/3proxy /usr/local/etc/3proxy/bin
-cp ./scripts/rc.d/proxy.sh /etc/init.d/3proxy
+cp /usr/local/src/3proxy /usr/local/etc/3proxy/bin
+cp /usr/local/src/3proxy/scripts/init.d/3proxy.sh /etc/init.d/3proxy
 
 # Thiết lập khởi động tự động cho 3proxy
 echo "Thiết lập khởi động tự động cho 3proxy..."
