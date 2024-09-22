@@ -6,10 +6,11 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# Cài đặt EPEL repository và Dante
-echo "Cài đặt EPEL repository và Dante..."
+# Cài đặt các gói cần thiết
+echo "Cài đặt các gói cần thiết..."
 dnf install epel-release -y
 dnf install dante-server -y
+dnf install iproute -y # Đảm bảo cài đặt iproute để lấy địa chỉ IP
 
 # Lấy địa chỉ IPv4 của VPS
 ipv4_address=$(hostname -I | awk '{print $1}')
@@ -25,9 +26,13 @@ for ipv6 in "${ipv6_array[@]}"; do
   fi
 done
 
-# Kiểm tra số lượng địa chỉ IPv6 hợp lệ
-if [ ${#valid_ipv6[@]} -lt 100 ]; then
-  echo "Không đủ địa chỉ IPv6 hợp lệ (cần ít nhất 100)."
+# Đếm số lượng địa chỉ IPv6 hợp lệ
+valid_count=${#valid_ipv6[@]}
+echo "Số lượng địa chỉ IPv6 hợp lệ: $valid_count"
+
+# Nếu không có địa chỉ IPv6 hợp lệ, dừng script
+if [ $valid_count -eq 0 ]; then
+  echo "Không có địa chỉ IPv6 hợp lệ để tạo proxy. Kết thúc script."
   exit 1
 fi
 
@@ -52,7 +57,7 @@ echo "Đang tạo proxy..."
 output_file="proxy_list.txt"
 rm -f $output_file
 
-for ((i=0; i<100; i++)); do
+for ((i=0; i<valid_count; i++)); do
   ipv6="${valid_ipv6[i]}"
   port=$((1080 + i)) # Bắt đầu từ port 1080
   user="user$i"
@@ -66,8 +71,29 @@ for ((i=0; i<100; i++)); do
   echo "$ipv4_address:$port:$user:$pass" >> $output_file
 done
 
+# Tạo file dịch vụ cho Dante
+service_file="/etc/systemd/system/danted.service"
+echo "Tạo file dịch vụ cho Dante..."
+cat <<EOL > $service_file
+[Unit]
+Description=Dante SOCKS Proxy Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/danted -f /etc/danted.conf
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
 # Khởi động lại dịch vụ Dante
 echo "Khởi động lại dịch vụ Dante..."
-systemctl restart danted
+systemctl daemon-reload
+systemctl start danted
+systemctl enable danted
 
-echo "Hoàn thành! Danh sách proxy đã được lưu trong $output_file."
+# In danh sách proxy ra màn hình
+echo "Hoàn thành! Danh sách proxy đã được lưu trong $output_file:"
+cat $output_file
