@@ -41,15 +41,21 @@ for ((i=0; i<100; i++)); do
     # Thêm tên người dùng và mật khẩu vào file xác thực
     htpasswd -b $htpasswd_file $username $password
 
-    # Thêm cấu hình cho địa chỉ IPv6 và cổng, ràng buộc từng cổng với địa chỉ IPv6 riêng
+    # Thêm cấu hình cho từng cổng và địa chỉ IPv6
     echo "http_port $port" >> $squid_conf
-    echo "tcp_outgoing_address $ipv6 $port" >> $squid_conf  # Ràng buộc IPv6 với cổng cụ thể
+    
+    # Tạo ACL cho cổng cụ thể
+    echo "acl port$i myportname $port" >> $squid_conf
+    
+    # Áp dụng địa chỉ IPv6 cho ACL của cổng
+    echo "tcp_outgoing_address $ipv6 port$i" >> $squid_conf
 
     # Thêm thông tin proxy vào danh sách
     proxy_list+=("$ipv4_address:$port:$username:$password")
 
     echo "Proxy đang chạy trên $ipv4_address:$port với tên người dùng $username và mật khẩu $password chuyển tiếp đến $ipv6"
 done
+
 
 
 # Khởi động Squid
