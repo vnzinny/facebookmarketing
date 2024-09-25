@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Đường dẫn chứa file quy tắc iptables của script tạo proxy
-IPTABLES_FILE="/home/cloudfly/boot_iptables.sh"
+IPTABLES_FILE="/home/duyscript/boot_iptables.sh"
 
 # Lấy địa chỉ IP từ DDNS của No-IP
 IP=$(dig +short vnzinny.ddns.net)
@@ -128,7 +128,7 @@ check_rules() {
 # Cài đặt cron để chạy script này mỗi giờ một lần
 install_cronjob() {
     echo "Setting up cron job to run this script every hour..."
-    (crontab -l | grep -v '/home/cloudfly/boot_iptables.sh'; echo "0 * * * * /home/cloudfly/boot_iptables.sh") | crontab -
+    (crontab -l | grep -v '/home/duyscript/boot_iptables.sh'; echo "0 * * * * /home/duyscript/boot_iptables.sh") | crontab -
 }
 
 # Gọi các hàm
@@ -137,7 +137,7 @@ allow_proxy_ports
 block_unnecessary_services
 check_rules
 install_cronjob
-chmod +x /home/cloudfly/boot_iptables.sh && bash /home/cloudfly/boot_iptables.sh
+chmod +x /home/duyscript/boot_iptables.sh && bash /home/duyscript/boot_iptables.sh
 iptables-save > /etc/sysconfig/iptables
 iptables -L -n -v
 
