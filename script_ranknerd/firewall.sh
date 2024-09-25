@@ -11,7 +11,7 @@ if [[ -z "$IP" ]]; then
 fi
 
 # Các cổng cần mở
-PROXY_PORTS=($(seq 21000 21099))
+PROXY_PORTS=($(seq 21000 21100))
 ALLOWED_PROTOCOLS=("tcp" "udp")  # Giao thức cần thiết
 
 # Kiểm tra các gói đã cài đặt và cài nếu thiếu
