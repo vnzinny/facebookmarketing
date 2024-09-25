@@ -128,7 +128,7 @@ check_rules() {
 # Cài đặt cron để chạy script này mỗi giờ một lần
 install_cronjob() {
     echo "Setting up cron job to run this script every hour..."
-    (crontab -l | grep -v '/home/duyscript/boot_iptables.sh'; echo "0 * * * * /home/duyscript/boot_iptables.sh") | crontab -
+    (crontab -l | grep -v '/home/duyscript/firewall.sh'; echo "0 * * * * /home/duyscript/firewall.sh") | crontab -
 }
 
 # Gọi các hàm
