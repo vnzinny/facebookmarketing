@@ -115,13 +115,26 @@ dnf -y install nano wget gcc net-tools tar zip iptables make >/dev/null
 # Cấu hình sysctl
 configure_sysctl() {
     echo "Configuring sysctl..."
+    
+    # Xóa nội dung cũ trong /etc/sysctl.conf
+    if [ -f /etc/sysctl.conf ]; then
+        echo "Xóa cấu hình cũ trong /etc/sysctl.conf..."
+        > /etc/sysctl.conf
+    fi
+
+    # Thêm cấu hình mới
     echo "* hard nofile 999999" >> /etc/security/limits.conf
     echo "* soft nofile 999999" >> /etc/security/limits.conf
     echo "net.ipv6.conf.eth0.proxy_ndp=1" >> /etc/sysctl.conf
     echo "net.ipv6.conf.all.proxy_ndp=1" >> /etc/sysctl.conf
     echo "net.ipv6.conf.default.forwarding=1" >> /etc/sysctl.conf
     echo "net.ipv6.conf.all.forwarding=1" >> /etc/sysctl.conf
-    echo "net.ipv6.ip_nonlocal_bind = 1" >> /etc/sysctl.conf
+    echo "net.ipv6.ip_nonlocal_bind=1" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.all.disable_ipv6=0" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.default.disable_ipv6=0" >> /etc/sysctl.conf
+    echo "net.ipv6.conf.lo.disable_ipv6=0" >> /etc/sysctl.conf
+
+    # Áp dụng các thay đổi sysctl
     sysctl -p
 }
 
