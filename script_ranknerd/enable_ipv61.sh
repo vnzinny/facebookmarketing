@@ -2,7 +2,7 @@
 
 # Kiểm tra quyền truy cập root
 if [[ $EUID -ne 0 ]]; then
-   echo "Vui lòng chạy script này với quyền root." 
+   echo "Vui lòng chạy script này với quyền root."
    exit 1
 fi
 
