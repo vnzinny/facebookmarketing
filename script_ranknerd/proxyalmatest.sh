@@ -8,12 +8,12 @@ random() {
 
 # Lọc và lấy địa chỉ IPv6 hợp lệ
 get_ipv6() {
-    ip -6 addr show | grep "inet6" | grep -v "scope link" | awk '{print $2}' | cut -d'/' -f1
+    ip -6 addr show | grep "inet6" | grep -v "scope link" | awk '{print $2}' | grep -v '^::1/' | cut -d'/' -f1
 }
 
 # Lọc và lấy địa chỉ IPv4 hợp lệ
 get_ipv4() {
-    ip -4 addr show | grep "inet" | awk '{print $2}' | cut -d'/' -f1
+    ip -4 addr show | grep "inet" | awk '{print $2}' | cut -d'/' -f1 | grep -v '^127\.'
 }
 
 install_3proxy() {
@@ -92,7 +92,7 @@ gen_data() {
     for ((j = 0; j < ${#ipv4_array[@]}; j++)); do
         port_ipv4=$(($LAST_PORT + 1 + $j))
         if [ $port_ipv4 -le $LAST_PORT_IPV4 ]; then
-            echo "user$port_ipv4/$(random)/${ipv4_array[$j]}/$port_ipv4"
+            echo "user$port_ipv4/$(random)/$IP4/$port_ipv4/${ipv4_array[$j]}"
         fi
     done
 }
@@ -191,7 +191,7 @@ chmod +x /etc/rc.d/rc.local
 systemctl enable rc-local
 systemctl start rc-local
 
-echo "Installing 3proxy..."
+# Installing 3proxy
 install_3proxy
 
 WORKDIR="/home/duyscript"
