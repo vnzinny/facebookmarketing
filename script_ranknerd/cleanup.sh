@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WORKDIR="/home/cloudfly"
+WORKDIR="/home/duyscript"
 WORKDATA="${WORKDIR}/data.txt"
 
 # Dừng dịch vụ 3proxy
@@ -22,6 +22,7 @@ rm -f $WORKDIR/boot_ifconfig.sh
 # Xóa quy tắc iptables
 echo "Removing iptables rules..."
 iptables -F
+systemctl stop iptables
 
 # Xóa rc.local service
 echo "Disabling and removing rc.local service..."
