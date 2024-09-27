@@ -128,7 +128,18 @@ check_rules() {
 # Cài đặt cron để chạy script này mỗi giờ một lần
 install_cronjob() {
     echo "Setting up cron job to run this script every hour..."
-    (crontab -l | grep -v '/home/duyscript/firewall.sh'; echo "0 * * * * /home/duyscript/firewall.sh") | crontab -
+    
+    # Đường dẫn đến script
+    CRON_JOB="/home/duyscript/firewall.sh"
+
+    # Kiểm tra xem cron job đã tồn tại chưa
+    if crontab -l | grep -q "$CRON_JOB"; then
+        echo "Cron job already exists. Skipping..."
+    else
+        # Nếu chưa tồn tại, thêm công việc cron
+        (crontab -l | grep -v "$CRON_JOB"; echo "0 * * * * $CRON_JOB") | crontab -
+        echo "Cron job added."
+    fi
 }
 
 # Gọi các hàm
@@ -140,5 +151,6 @@ install_cronjob
 chmod +x /home/duyscript/boot_iptables.sh && bash /home/duyscript/boot_iptables.sh
 iptables-save > /etc/sysconfig/iptables
 iptables -L -n -v
+service iptables save
 
 echo "Script executed successfully."
