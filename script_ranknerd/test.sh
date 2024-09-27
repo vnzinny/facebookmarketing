@@ -32,7 +32,7 @@ download_proxy() {
     curl -F "file=@proxy.txt" https://file.io
 }
 
-gen_3proxy() {
+gen_3proxyo() {
     cat <<EOF
 daemon
 maxconn 2000
@@ -65,6 +65,42 @@ $(awk -F "/" '{print "auth strong\n" \
 EOF
 }
 
+gen_3proxy() {
+    cat <<EOF
+daemon
+maxconn 2000
+nserver 1.1.1.1
+nserver 8.8.4.4
+nserver 2001:4860:4860::8888
+nserver 2001:4860:4860::8844
+nscache 65536
+timeouts 3 10 30 60 180 1800 15 60
+setgid 65535
+setuid 65535
+stacksize 8388608 
+flush
+auth strong
+
+users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
+
+# Thêm phần cấu hình cho IPv6 và IPv4
+$(awk -F "/" '
+{
+    print "auth strong\nallow " $1;
+    if ($5 ~ /^[0-9a-fA-F:]+$/) {
+        # Địa chỉ IPv6
+        print "proxy -6 -n -a -p" $4 " -i" $3 " -e" $5;
+    } else {
+        # Địa chỉ IPv4
+        print "proxy -n -a -p" $4 " -i" $3;
+    }
+    print "flush\n";
+}' ${WORKDATA})
+EOF
+}
+
+
+
 gen_proxy_file_for_user() {
     cat >proxy.txt <<EOF
 $(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
@@ -96,6 +132,8 @@ gen_data() {
         fi
     done
 }
+
+
 
 gen_iptables() {
     cat <<EOF
