@@ -32,6 +32,7 @@ download_proxy() {
     curl -F "file=@proxy.txt" https://file.io
 }
 
+
 gen_3proxy() {
     cat <<EOF
 daemon
@@ -42,34 +43,41 @@ nserver 2001:4860:4860::8888
 nserver 2001:4860:4860::8844
 nscache 65536
 timeouts 3 10 30 60 180 1800 15 60
-# timeouts 5 15 45 90 300 1800 30 120
-setgid 65535
-setuid 65535
-stacksize 8388608 
+setgid 60000
+setuid 60000
+stacksize 6291456
+log /usr/local/etc/3proxy/logs/3proxy.log
 flush
 auth strong
 
-users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
+users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 ", "}' ${WORKDATA})
 
-# Thêm phần cấu hình cho IPv6
-$(awk -F "/" '{print "auth strong\n" \
-"allow " $1 "\n" \
-"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
-"flush\n"}' ${WORKDATA})
+# Thêm phần cấu hình cho IPv6 và IPv4 chỉ khi có đủ thông tin
+$(awk -F "/" '
+{
+    if ($5 != "" && $6 == "ipv6") {  # Nếu có IPv6, cấu hình proxy cho IPv6
+        print "auth strong\n" \
+        "allow " $1 "\n" \
+        "proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
+        "flush\n"
+    } else if ($3 != "") {  # Nếu không có IPv6 nhưng có IPv4, cấu hình proxy cho IPv4
+        print "auth strong\n" \
+        "allow " $1 "\n" \
+        "proxy -n -a -p" $4 " -i" $3 "\n" \
+        "flush\n"
+    }
+}' ${WORKDATA})
 
-# Thêm phần cấu hình cho IPv4
-$(awk -F "/" '{print "auth strong\n" \
-"allow " $1 "\n" \
-"proxy -n -a -p" $4 " -i" $3 "\n" \
-"flush\n"}' ${WORKDATA})
 EOF
 }
+
 
 gen_proxy_file_for_user() {
     cat >proxy.txt <<EOF
 $(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
 EOF
 }
+
 
 gen_data() {
     # Lấy tất cả địa chỉ IPv6 hợp lệ
@@ -84,7 +92,7 @@ gen_data() {
     for ((i = 0; i < ${#ipv6_array[@]}; i++)); do
         port_ipv6=$(($FIRST_PORT + $i))
         if [ $port_ipv6 -le $LAST_PORT ]; then
-            echo "user$port_ipv6/$(random)/$IP4/$port_ipv6/${ipv6_array[$i]}"
+            echo "user$port_ipv6/$(random)/$IP4/$port_ipv6/${ipv6_array[$i]}/ipv6"
         fi
     done
 
@@ -92,10 +100,11 @@ gen_data() {
     for ((j = 0; j < ${#ipv4_array[@]}; j++)); do
         port_ipv4=$(($LAST_PORT + 1 + $j))
         if [ $port_ipv4 -le $LAST_PORT_IPV4 ]; then
-            echo "user$port_ipv4/$(random)/$IP4/$port_ipv4/${ipv4_array[$j]}"
+            echo "user$port_ipv4/$(random)/$IP4/$port_ipv4/${ipv4_array[$j]}/ipv4"
         fi
     done
 }
+
 
 gen_iptables() {
     cat <<EOF
@@ -103,14 +112,25 @@ gen_iptables() {
 EOF
 }
 
+
 gen_ifconfig() {
     cat <<EOF
-$(awk -F "/" '{if (system("ip -6 addr show dev eth0 | grep " $5 " > /dev/null") != 0) print "ifconfig eth0 inet6 add " $5 "/64"}' ${WORKDATA})
+$(awk -F "/" '
+{
+    # Kiểm tra địa chỉ IPv6 và IPv4
+    if ($5 != "" && $6 == "ipv6" && system("ip -6 addr show dev eth0 | grep -q " $5) != 0) {
+        print "ifconfig eth0 inet6 add " $5 "/64"
+    }
+    if ($3 != "" && $6 == "ipv4" && system("ip addr show dev eth0 | grep -q " $3) != 0) {
+        print "ifconfig eth0 inet add " $3 " netmask 255.255.255.0"
+    }
+}' ${WORKDATA})
 EOF
 }
 
+
 echo "Installing required packages..."
-dnf -y install nano wget gcc net-tools tar zip iptables make >/dev/null
+dnf -y install nano wget gcc net-tools tar zip iptables iptables-services make bind-utils >/dev/null
 
 # Cấu hình sysctl
 configure_sysctl() {
@@ -136,27 +156,37 @@ configure_sysctl() {
 
     # Áp dụng các thay đổi sysctl
     sysctl -p
+	systemctl restart network
 }
 
 # Tạo file dịch vụ cho 3proxy
 cat <<EOF > /etc/systemd/system/3proxy.service
 [Unit]
-Description=3proxy Service
+Description=3proxy tiny proxy server
+Documentation=man:3proxy(1)
 After=network.target
 
 [Service]
-Type=simple
 ExecStart=/usr/local/etc/3proxy/bin/3proxy /usr/local/etc/3proxy/3proxy.cfg
+ExecReload=/bin/kill -SIGUSR1 $MAINPID
+KillMode=process
 Restart=on-failure
-User=nobody
+RestartSec=60s
+LimitNOFILE=65535
+LimitNPROC=1024
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 # Kích hoạt dịch vụ 3proxy
+systemctl daemon-reload
 systemctl enable 3proxy.service
 systemctl start 3proxy.service
+
+# Bật iptables
+systemctl enable iptables
+systemctl start iptables
 
 # Tắt firewalld
 systemctl stop firewalld
@@ -186,13 +216,16 @@ if [ ! -f /etc/rc.d/rc.local ]; then
     echo "#!/bin/bash" > /etc/rc.d/rc.local
 fi
 
-# Enable rc.local service
+# Bật rc.local service
 chmod +x /etc/rc.d/rc.local
 systemctl enable rc-local
 systemctl start rc-local
 
-# Installing 3proxy
+# Cài đặt 3proxy
 install_3proxy
+
+# Cấu hình sysctl
+configure_sysctl
 
 WORKDIR="/home/duyscript"
 WORKDATA="${WORKDIR}/data.txt"
@@ -244,7 +277,7 @@ gen_3proxy >/usr/local/etc/3proxy/3proxy.cfg
 cat >>/etc/rc.d/rc.local <<EOF
 bash ${WORKDIR}/boot_iptables.sh
 bash ${WORKDIR}/boot_ifconfig.sh
-ulimit -n 1000048
+ulimit -n 65535
 /usr/local/etc/3proxy/bin/3proxy /usr/local/etc/3proxy/3proxy.cfg
 EOF
 
@@ -252,9 +285,6 @@ chmod 0755 /etc/rc.d/rc.local
 bash /etc/rc.d/rc.local
 
 gen_proxy_file_for_user
-
-# Cấu hình sysctl
-configure_sysctl
 
 echo "Starting Proxy..."
 download_proxy
