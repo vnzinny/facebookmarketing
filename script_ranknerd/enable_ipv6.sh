@@ -6,6 +6,14 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+# Xóa cấu hình cũ trong sysctl
+echo "Xóa cấu hình IPv6 cũ trong sysctl..."
+if [ -f /etc/sysctl.d/99-sysctl.conf ]; then
+    sed -i '/^net.ipv6.conf.all.disable_ipv6/d' /etc/sysctl.d/99-sysctl.conf
+    sed -i '/^net.ipv6.conf.default.disable_ipv6/d' /etc/sysctl.d/99-sysctl.conf
+    sed -i '/^net.ipv6.conf.lo.disable_ipv6/d' /etc/sysctl.d/99-sysctl.conf
+fi
+
 # Bật IPv6 trong sysctl
 echo "Bật IPv6 trong sysctl..."
 cat <<EOF >> /etc/sysctl.d/99-sysctl.conf
@@ -21,10 +29,11 @@ sysctl -p /etc/sysctl.d/99-sysctl.conf
 # Kiểm tra trạng thái của IPv6
 if [ -d /etc/sysconfig/network-scripts ]; then
     for file in /etc/sysconfig/network-scripts/ifcfg-*; do
+        # Xóa cấu hình IPv6 cũ
         if grep -q 'IPV6INIT' "$file"; then
             echo "Cập nhật cấu hình IPv6 trong $file..."
-            sed -i 's/IPV6INIT=no/IPV6INIT=yes/' "$file"
-            sed -i 's/IPV6_AUTOCONF=no/IPV6_AUTOCONF=yes/' "$file"
+            sed -i 's/IPV6INIT=[^ ]*/IPV6INIT=yes/' "$file"
+            sed -i 's/IPV6_AUTOCONF=[^ ]*/IPV6_AUTOCONF=yes/' "$file"
         else
             echo "Cập nhật cấu hình IPv6 cho $file..."
             echo "IPV6INIT=yes" >> "$file"
