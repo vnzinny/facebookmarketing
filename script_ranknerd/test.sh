@@ -126,14 +126,14 @@ configure_sysctl() {
         echo "Checking for existing configurations in /etc/sysctl.conf..."
 
         # Xóa tất cả các dòng chứa thông số liên quan
-        sed -i '/net.ipv6.conf.eth0.proxy_ndp=/d' /etc/sysctl.conf
-        sed -i '/net.ipv6.conf.all.proxy_ndp=/d' /etc/sysctl.conf
-        sed -i '/net.ipv6.conf.default.forwarding=/d' /etc/sysctl.conf
-        sed -i '/net.ipv6.conf.all.forwarding=/d' /etc/sysctl.conf
-        sed -i '/net.ipv6.ip_nonlocal_bind=/d' /etc/sysctl.conf
-        sed -i '/net.ipv6.conf.all.disable_ipv6=/d' /etc/sysctl.conf
-        sed -i '/net.ipv6.conf.default.disable_ipv6=/d' /etc/sysctl.conf
-        sed -i '/net.ipv6.conf.lo.disable_ipv6=/d' /etc/sysctl.conf
+	sed -i '/net.ipv6.conf.eth0.proxy_ndp\s*=/d' /etc/sysctl.conf
+	sed -i '/net.ipv6.conf.all.proxy_ndp\s*=/d' /etc/sysctl.conf
+	sed -i '/net.ipv6.conf.default.forwarding\s*=/d' /etc/sysctl.conf
+	sed -i '/net.ipv6.conf.all.forwarding\s*=/d' /etc/sysctl.conf
+	sed -i '/net.ipv6.ip_nonlocal_bind\s*=/d' /etc/sysctl.conf
+	sed -i '/net.ipv6.conf.all.disable_ipv6\s*=/d' /etc/sysctl.conf
+	sed -i '/net.ipv6.conf.default.disable_ipv6\s*=/d' /etc/sysctl.conf
+	sed -i '/net.ipv6.conf.lo.disable_ipv6\s*=/d' /etc/sysctl.conf
     fi
 
     # Thêm cấu hình mới
