@@ -32,39 +32,6 @@ download_proxy() {
     curl -F "file=@proxy.txt" https://file.io
 }
 
-gen_3proxyo() {
-    cat <<EOF
-daemon
-maxconn 2000
-nserver 1.1.1.1
-nserver 8.8.4.4
-nserver 2001:4860:4860::8888
-nserver 2001:4860:4860::8844
-nscache 65536
-timeouts 3 10 30 60 180 1800 15 60
-# timeouts 5 15 45 90 300 1800 30 120
-setgid 65535
-setuid 65535
-stacksize 8388608 
-flush
-auth strong
-
-users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
-
-# Thêm phần cấu hình cho IPv6
-$(awk -F "/" '{print "auth strong\n" \
-"allow " $1 "\n" \
-"proxy -6 -n -a -p" $4 " -i" $3 " -e"$5"\n" \
-"flush\n"}' ${WORKDATA})
-
-# Thêm phần cấu hình cho IPv4
-$(awk -F "/" '{print "auth strong\n" \
-"allow " $1 "\n" \
-"proxy -n -a -p" $4 " -i" $3 "\n" \
-"flush\n"}' ${WORKDATA})
-EOF
-}
-
 gen_3proxy() {
     cat <<EOF
 daemon
@@ -153,11 +120,20 @@ dnf -y install nano wget gcc net-tools tar zip iptables iptables-services make b
 # Cấu hình sysctl
 configure_sysctl() {
     echo "Configuring sysctl..."
-    
-    # Xóa nội dung cũ trong /etc/sysctl.conf
+
+    # Kiểm tra và thêm cấu hình mới nếu chưa tồn tại
     if [ -f /etc/sysctl.conf ]; then
-        echo "Xóa cấu hình cũ trong /etc/sysctl.conf..."
-        > /etc/sysctl.conf
+        echo "Checking for existing configurations in /etc/sysctl.conf..."
+
+        # Xóa tất cả các dòng chứa thông số liên quan
+        sed -i '/net.ipv6.conf.eth0.proxy_ndp=/d' /etc/sysctl.conf
+        sed -i '/net.ipv6.conf.all.proxy_ndp=/d' /etc/sysctl.conf
+        sed -i '/net.ipv6.conf.default.forwarding=/d' /etc/sysctl.conf
+        sed -i '/net.ipv6.conf.all.forwarding=/d' /etc/sysctl.conf
+        sed -i '/net.ipv6.ip_nonlocal_bind=/d' /etc/sysctl.conf
+        sed -i '/net.ipv6.conf.all.disable_ipv6=/d' /etc/sysctl.conf
+        sed -i '/net.ipv6.conf.default.disable_ipv6=/d' /etc/sysctl.conf
+        sed -i '/net.ipv6.conf.lo.disable_ipv6=/d' /etc/sysctl.conf
     fi
 
     # Thêm cấu hình mới
@@ -177,20 +153,28 @@ configure_sysctl() {
     systemctl restart network
 }
 
+
 # Tạo file dịch vụ cho 3proxy
 cat <<EOF > /etc/systemd/system/3proxy.service
 [Unit]
-Description=3proxy Service
+Description=3proxy tiny proxy server
+Documentation=man:3proxy(1)
 After=network.target
 
 [Service]
-Type=simple
-ExecStart=/usr/local/etc/3proxy/bin/3proxy /usr/local/etc/3proxy/3proxy.cfg
+Environment=CONFIGFILE=/usr/local/etc/3proxy/3proxy.cfg
+ExecStart=/usr/local/etc/3proxy/bin/3proxy ${CONFIGFILE}
+ExecReload=/bin/kill -SIGUSR1 $MAINPID
+KillMode=process
 Restart=on-failure
-User=nobody
+RestartSec=60s
+LimitNOFILE=65536
+LimitNPROC=32768
+RuntimeDirectory=3proxy
 
 [Install]
 WantedBy=multi-user.target
+Alias=3proxy.service
 EOF
 
 # Kích hoạt dịch vụ 3proxy
